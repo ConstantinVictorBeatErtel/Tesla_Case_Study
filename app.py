@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from scipy.stats import beta
 import copy
+from bayesian_priors import create_bayesian_simulator
 
 # --- Parameters ---
 # Parameters based on researched values (means from case, std/dist from sources like USITC, FHWA, etc.)
@@ -186,11 +187,24 @@ st.set_page_config(layout="wide")
 st.title("Tesla Sourcing Monte Carlo Simulation Dashboard")
 st.write("This dashboard simulates total costs per lamp for sourcing from the US, Mexico, or China, accounting for uncertainties in costs, yields, and risks.")
 
+# Toggle for Bayesian approach
+use_bayesian = st.checkbox(
+    "Use Bayesian Priors (fetch real data from FRED)", 
+    value=False,
+    help="Enable to use real economic data (PPI, FX rates) with Bayesian posterior estimation. This accounts for parameter uncertainty and gives more conservative risk estimates."
+)
+
 n_runs = st.number_input("Number of Simulation Runs", min_value=1000, max_value=100000, value=10000, step=1000)
 
 if st.button("Run Global Simulation"):
     with st.spinner("Running simulations for all countries..."):
-        all_costs = {country: simulate_country(params, n_runs) for country, params in countries.items()}
+        if use_bayesian:
+            # Build Bayesian simulators (fetches real data and fits posteriors)
+            bayesian_sims = create_bayesian_simulator(countries)
+            all_costs = {country: bayesian_sims[country](n_runs) for country in countries.keys()}
+        else:
+            # Use original hand-picked parameters
+            all_costs = {country: simulate_country(params, n_runs) for country, params in countries.items()}
 
         st.subheader("Summary Statistics")
         cols = st.columns(len(countries))
