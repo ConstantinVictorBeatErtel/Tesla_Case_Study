@@ -1,12 +1,10 @@
 from dataclasses import dataclass
 
-from numpy.typing import NDArray
-
 
 @dataclass
 class DiscreteRiskSimulation:
-    delayed_units: NDArray[int]
-    costs: NDArray[float]
+    delayed_units: int
+    cost: float
 
 
 @dataclass
@@ -21,9 +19,17 @@ class DiscreteRisks:
 @dataclass
 class DiscreteRisksParams:
     disruption_lambda: float  # disruption ~ poisson
+    disruption_min: int
+    disruption_max: int
+    disruption_days_delayed: int
     border_delay_lambda: float  # border delay ~ poisson
+    border_delay_min: int
+    border_delay_max: int
+    border_delay_days_delayed: int
     damage_probability: float  # damaged ~ binomial
+    damage_days_delayed: int
     defective_probability: float  # defectives ~ binomial
+    defective_days_delayed: int
     cancellation_probability: float  # cancellation ~ bernoulli
-    days_delayed: int  # the number of days we have to wait because of the delay
-    # note that the above might be different per country, per risk?
+    cancellation_days_delayed: int
+    order_size: int

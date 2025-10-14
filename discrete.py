@@ -1,5 +1,5 @@
-from numpy.random import binomial, poisson
-from numpy.typing import NDArray
+from numpy import sum
+from numpy.random import binomial, poisson, uniform
 
 from live_data import get_most_recent_fed_funds_rate
 from structs import DiscreteRisks, DiscreteRiskSimulation, DiscreteRisksParams
@@ -8,9 +8,7 @@ from structs import DiscreteRisks, DiscreteRiskSimulation, DiscreteRisksParams
 # these parameters are to explain how a delayed part can be mapped to a financial cost
 
 model_y_price = 41630
-# SOURCE: https://www.motor1.com/news/775008/tesla-model-y-standard-pricing-range-details/
 model_y_manufacturing_cost = 38000
-# SOURCE: https://www.bitauto.com/wiki/100132610482/#:~:text=The%20battery%20pack%20accounts%20for,for%20approximately%2015%25%2D20%25.
 model_y_profit = model_y_price - model_y_manufacturing_cost
 wacc = 0.0877
 expedited_shipping_cost_per_unit = 50.71
@@ -41,64 +39,106 @@ def total_cost(delayed_units: int, days_delayed: int):
 
 
 # --- Distribution Generators ---
-def generate_disruption_risk(disruption_lambda: float, n_runs: int) -> NDArray[int]:
-    travel_disruptions = poisson(disruption_lambda)
-    # TODO:
+def generate_disruption_risk(
+    disruption_lambda: float,
+    min_impact: int,
+    max_impact: int,
+    disruption_days_delayed: int,
+) -> DiscreteRiskSimulation:
+    """Based on the total number of disruptions, estimate the # impacted units"""
+    disruptions = poisson(disruption_lambda)
 
-    # from these disruptions, how many units got impacted?    # from these disruptions, how many units got impacted?
+    if disruptions == 0:
+        return DiscreteRiskSimulation(0, 0)
+
+    severity = uniform(low=min_impact, high=max_impact, size=disruptions)
+    total_lost = int(sum(severity))
+
+    return DiscreteRiskSimulation(
+        total_lost, total_cost(total_lost, disruption_days_delayed)
+    )
 
 
-def generate_border_delay_risk(border_delay_lambda: float, n_runs: int) -> NDArray[int]:
-    # TODO
-    pass
+def generate_border_delay_risk(
+    border_delay_lambda: float,
+    min_impact: int,
+    max_impact: int,
+    border_delay_days_delayed: int,
+) -> DiscreteRiskSimulation:
+    """Total number of border delays"""
+    border_delays = poisson(border_delay_lambda)
+    if border_delays == 0:
+        return DiscreteRiskSimulation(0, 0)
+
+    severity = uniform(low=min_impact, high=max_impact, size=border_delays)
+    total_lost = int(sum(severity))
+    return DiscreteRiskSimulation(
+        total_lost, total_cost(total_lost, border_delay_days_delayed)
+    )
 
 
 def generate_damaged_risk(
-    order_size: int, damage_probability: float, n_runs: int
-) -> NDArray[int]:
-    return binomial(order_size, damage_probability, n_runs)
+    order_size: int, damage_probability: float, damage_days_delayed: int
+) -> DiscreteRiskSimulation:
+    """Total number of damaged units"""
+    damaged_units = binomial(order_size, damage_probability)
+    return DiscreteRiskSimulation(
+        damaged_units, total_cost(damaged_units, damage_days_delayed)
+    )
 
 
 def generate_defective_risk(
-    order_size: int, defective_probability: float, n_runs: int
-) -> NDArray[int]:
-    return binomial(order_size, defective_probability, n_runs)
+    order_size: int, defective_probability: float, defective_days_delayed: int
+) -> DiscreteRiskSimulation:
+    """Total number of defective units"""
+    defective_units = binomial(order_size, defective_probability)
+    return DiscreteRiskSimulation(
+        defective_units, total_cost(defective_units, defective_days_delayed)
+    )
 
 
 def generate_last_minute_cancellation_risk(
-    cancellation_probability: float, n_runs: int
-) -> NDArray[int]:
-    # they either cancel or they don't, so no order size here
-    return binomial(1, cancellation_probability, n_runs)
+    cancellation_probability: float, order_size: int, cancellation_days_delayed: int
+) -> DiscreteRiskSimulation:
+    """They either cancel or they don't"""
+    cancelled = binomial(1, cancellation_probability)
+    return DiscreteRiskSimulation(
+        # since they cancel the entire order, we need to multiply by the order size
+        cancelled * order_size,
+        total_cost(cancelled * order_size, cancellation_days_delayed),
+    )
 
 
 # --- Main Function ---
-def generate_discrete_risks(params: DiscreteRisksParams, n_runs: int) -> DiscreteRisks:
-    disruptions = generate_disruption_risk(params.disruption_lambda, n_runs)
-    disruption_costs = total_cost(disruptions.delayed_units, params.days_delayed)
-
-    border_delays = generate_border_delay_risk(params.border_delay_lambda, n_runs)
-    border_delay_costs = total_cost(border_delays.delayed_units, params.days_delayed)
-
-    damaged = generate_damaged_risk(params.damage_probability, n_runs)
-    damaged_costs = total_cost(damaged.delayed_units, params.days_delayed)
-
-    defectives = generate_defective_risk(params.defective_probability, n_runs)
-    defectives_costs = total_cost(defectives.delayed_units, params.days_delayed)
-
-    last_minute_cancellations = generate_last_minute_cancellation_risk(
-        params.cancellation_probability, n_runs
+def generate_discrete_risks(params: DiscreteRisksParams) -> DiscreteRisks:
+    damaged = generate_damaged_risk(
+        params.order_size, params.damage_probability, params.damage_days_delayed
     )
-    last_minute_cancellation_costs = total_cost(
-        last_minute_cancellations.delayed_units, params.days_delayed
+    defective = generate_defective_risk(
+        params.order_size, params.defective_probability, params.defective_days_delayed
+    )
+    cancelled = generate_last_minute_cancellation_risk(
+        params.cancellation_probability,
+        params.order_size,
+        params.cancellation_days_delayed,
+    )
+    border_delay = generate_border_delay_risk(
+        params.border_delay_lambda,
+        params.border_delay_min,
+        params.border_delay_max,
+        params.border_delay_days_delayed,
+    )
+    disruption = generate_disruption_risk(
+        params.disruption_lambda,
+        params.disruption_min,
+        params.disruption_max,
+        params.disruption_days_delayed,
     )
 
     return DiscreteRisks(
-        DiscreteRiskSimulation(disruptions.delayed_units, disruption_costs),
-        DiscreteRiskSimulation(border_delays.delayed_units, border_delay_costs),
-        DiscreteRiskSimulation(
-            last_minute_cancellations.delayed_units, last_minute_cancellation_costs
-        ),
-        DiscreteRiskSimulation(damaged.delayed_units, damaged_costs),
-        DiscreteRiskSimulation(defectives.delayed_units, defectives_costs),
+        disruptions=disruption,
+        border_delays=border_delay,
+        damaged=damaged,
+        defectives=defective,
+        last_minute_cancellations=cancelled,
     )
