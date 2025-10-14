@@ -439,14 +439,6 @@ use_bayesian = st.checkbox(
     help="Enable to use real economic data (PPI, FX rates) with Bayesian posterior estimation. This accounts for parameter uncertainty and gives more conservative risk estimates.",
 )
 
-n_runs = st.number_input(
-    "Number of Simulation Runs",
-    min_value=1000,
-    max_value=100000,
-    value=10000,
-    step=1000,
-)
-
 # Append n_runs to params here as order_size
 # very hacky, but it works for now.
 countries["US"]["order_size"] = n_runs
