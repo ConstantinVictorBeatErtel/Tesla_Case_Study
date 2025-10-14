@@ -1,5 +1,17 @@
-__pycache__
-*.pyc
+# Mac Stuff
 .DS_Store
+
+# Environment Variables
 .env
 
+# Python Stuff
+.venv/
+.vscode/
+.idea/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+__pycache__/
