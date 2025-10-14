@@ -44,9 +44,14 @@ def factory_costs(params, n_runs):
     base *= 1 + np.random.normal(0, params["currency_std"], n_runs)
 
     # Apply tariff and potential escalation
-    tariff = np.full(n_runs, params["tariff"]["fixed"]) + np.random.normal(
-        params["tariff_escal"]["mean"], params["tariff_escal"]["std"], n_runs
-    )
+    if "fixed" in params["tariff_escal"]:
+        tariff = np.full(n_runs, params["tariff"]["fixed"]) + np.full(
+            n_runs, params["tariff_escal"]["fixed"]
+        )
+    else:
+        tariff = np.full(n_runs, params["tariff"]["fixed"]) + np.random.normal(
+            params["tariff_escal"]["mean"], params["tariff_escal"]["std"], n_runs
+        )
 
     # Calculate total cost before discrete risks
     total = base / yield_ + tariff

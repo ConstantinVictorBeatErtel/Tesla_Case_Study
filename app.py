@@ -7,6 +7,9 @@ import plotly.graph_objects as go
 import streamlit as st
 from scipy.optimize import minimize
 
+from discrete import create_params_from_dict, generate_discrete_risks
+from factory import factory_costs
+
 # --- Parameters ---
 
 
@@ -247,6 +250,53 @@ def simulate_country(params, n_runs):
     return total
 
 
+def run_monte_carlo(params: dict, n_runs: int) -> np.ndarray:
+    """
+    The main orchestrator, for running simulations
+    Returns the final cost PER UNIT as a NumPy array.
+    """
+    # 1. GENERATE BASE COSTS
+    # This returns an array of n_runs costs, one for each simulated headlamp.
+    base_cost_per_unit_dist = factory_costs(params, n_runs)
+
+    # 2. PREPARE FOR RISK SIMULATION
+    risk_params = create_params_from_dict(params)
+    # risk_params.order_size = n_runs  # order size is the number of headlamps we make
+    order_size = risk_params.order_size
+
+    # 3. GENERATE RISK COSTS
+    # Loop n_runs times to create a distribution of total risk costs.
+    risk_costs_for_order = []
+    for _ in range(n_runs):
+        # Run your single-order simulation
+        risk_scenario = generate_discrete_risks(risk_params)
+
+        # Calculate the total cost of all risks for this one run
+        total_risk_cost = (
+            risk_scenario.disruptions.cost
+            + risk_scenario.border_delays.cost
+            + risk_scenario.damaged.cost
+            + risk_scenario.defectives.cost
+            + risk_scenario.last_minute_cancellations.cost
+        )
+        risk_costs_for_order.append(total_risk_cost)
+
+    total_risk_cost_dist = np.array(risk_costs_for_order)
+
+    # 4. RECONCILE AND COMBINE
+    # Amortize the total order risk cost to a per-unit basis.
+    # Handle the case where order_size might be zero to avoid division errors.
+    if order_size > 0:
+        risk_cost_per_unit_dist = total_risk_cost_dist / order_size
+    else:
+        risk_cost_per_unit_dist = np.zeros(n_runs)
+
+    # The final result is the sum of the two distributions.
+    final_cost_per_unit = base_cost_per_unit_dist + risk_cost_per_unit_dist
+
+    return final_cost_per_unit
+
+
 # --- Portfolio Optimization Function ---
 def optimize_portfolio(all_costs, lambda_risk, constraints=None):
     """
@@ -323,7 +373,8 @@ def run_sensitivity_analysis(base_params, factors_to_test, n_runs, swing=0.20):
     results = []
 
     # Calculate baseline mean cost
-    base_costs = simulate_country(base_params, n_runs)
+    # base_costs = simulate_country(base_params, n_runs)
+    base_costs = run_monte_carlo(base_params, n_runs)
     baseline_mean = np.mean(base_costs)
 
     for factor_name, param_path in factors_to_test:
@@ -350,8 +401,9 @@ def run_sensitivity_analysis(base_params, factors_to_test, n_runs, swing=0.20):
                 temp_high = temp_high[key]
 
         # Simulate with low and high values
-        mean_low = np.mean(simulate_country(params_low, n_runs))
-        mean_high = np.mean(simulate_country(params_high, n_runs))
+        # mean_low = np.mean(simulate_country(params_low, n_runs))
+        mean_low = np.mean(run_monte_carlo(params_low, n_runs))
+        mean_high = np.mean(run_monte_carlo(params_high, n_runs))
 
         results.append(
             {
@@ -380,11 +432,18 @@ n_runs = st.number_input(
     step=1000,
 )
 
+# Append n_runs to params here as order_size
+# very hacky, but it works for now.
+countries["US"]["order_size"] = n_runs
+countries["Mexico"]["order_size"] = n_runs
+countries["China"]["order_size"] = n_runs
+
+
 # --- Global Simulation Section ---
 if st.button("Run Global Simulation"):
     with st.spinner("Running simulations for all countries..."):
         all_costs = {
-            country: simulate_country(params, n_runs)
+            country: run_monte_carlo(params, n_runs)
             for country, params in countries.items()
         }
 
@@ -603,7 +662,7 @@ if run_optimization:
     with st.spinner("Running optimization..."):
         # Run simulations
         all_costs = {
-            country: simulate_country(params, n_runs)
+            country: run_monte_carlo(params, n_runs)
             for country, params in countries.items()
         }
 

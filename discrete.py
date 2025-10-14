@@ -149,16 +149,17 @@ def create_params_from_dict(country_dict: dict) -> DiscreteRisksParams:
     Reads a dictionary of parameters for a country and creates a
     structured DiscreteRisksParams object.
     """
+    print(country_dict)
     return DiscreteRisksParams(
         order_size=country_dict["order_size"],
         disruption_lambda=country_dict["disruption_lambda"],
-        disruption_min_impact=country_dict["disruption_min_impact"],
-        disruption_max_impact=country_dict["disruption_max_impact"],
+        disruption_min=country_dict["disruption_min_impact"],
+        disruption_max=country_dict["disruption_max_impact"],
         disruption_days_delayed=country_dict["disruption_days_delayed"],
         border_delay_lambda=country_dict["border_delay_lambda"],
-        border_min_impact=country_dict["border_min_impact"],
-        border_max_impact=country_dict["border_max_impact"],
-        border_days_delayed=country_dict["border_days_delayed"],
+        border_delay_min=country_dict["border_min_impact"],
+        border_delay_max=country_dict["border_max_impact"],
+        border_delay_days_delayed=country_dict["border_days_delayed"],
         damage_probability=country_dict["damage_probability"],
         defective_probability=country_dict["defective_probability"],
         quality_days_delayed=country_dict["quality_days_delayed"],

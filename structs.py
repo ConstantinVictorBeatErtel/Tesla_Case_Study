@@ -31,6 +31,5 @@ class DiscreteRisksParams:
     # Next two parameters are for quality risks, which have the same delay
     damage_probability: float  # damaged ~ binomial
     defective_probability: float  # defectives ~ binomial
-    defective_days_delayed: int
     quality_days_delayed: int
     order_size: int

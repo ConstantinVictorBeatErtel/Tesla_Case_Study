@@ -21,4 +21,4 @@ def get_fed_funds_rate():
 
 def get_most_recent_fed_funds_rate():
     data = get_fed_funds_rate()
-    return data["observations"][-1]["value"]
+    return float(data["observations"][-1]["value"])
