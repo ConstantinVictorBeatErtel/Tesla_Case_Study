@@ -8,9 +8,12 @@ import streamlit as st
 from scipy.optimize import minimize
 
 # --- Parameters ---
+
+
 # Parameters based on researched values (means from case, std/dist from sources like USITC, FHWA, etc.)
 countries = {
     "US": {
+        # Continuous variables: these are the parameters for each plant
         "raw": {"dist": "normal", "mean": 40, "std": 4},
         "labor": {"dist": "lognormal", "mean": 2.48, "std": 0.15},  # mean ~12, std ~2
         "indirect": {"dist": "gamma", "shape": 25.0, "scale": 0.40},  # mean 10, std 2
@@ -23,8 +26,10 @@ countries = {
             "a": 79,
             "b": 20,
         },  # Approx for mean 0.8, std 0.04
+        # Discrete variables: these are the qualitative risks to the supply chain process
+        # The USA has no tariffs or currency volatility
         "tariff": {"fixed": 0},
-        "tariff_escal": {"mean": 0, "std": 0},
+        "tariff_escal": {"fixed": 0},
         "currency_std": 0,
         "disruption_prob": 0.05,
         "disruption_impact": 10,
@@ -64,7 +69,7 @@ countries = {
         "tariff_escal": {"mean": 0, "std": 2},
         "currency_std": 0.08,
         "disruption_prob": 0.1,
-        "disruption_impact": 10,
+        "disruption_impact": 10000,
         "border_mean": 0.83,
         "border_std": 0.67,
         "border_threshold": 2,
@@ -567,7 +572,7 @@ if run_optimization:
                     [
                         {
                             "Country": country,
-                            "Allocation": f"{weight*100:.1f}%",
+                            "Allocation": f"{weight * 100:.1f}%",
                             "Weight": weight,
                         }
                         for country, weight in result["allocations"].items()
