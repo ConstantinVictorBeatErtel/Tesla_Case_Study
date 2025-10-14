@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from scipy.optimize import minimize
 
+from bayesian_priors import create_bayesian_simulator
 from discrete import create_params_from_dict, generate_discrete_risks
 from factory import factory_costs
 
@@ -431,6 +432,20 @@ n_runs = st.number_input(
     value=10000,
     step=1000,
 )
+# Toggle for Bayesian approach
+use_bayesian = st.checkbox(
+    "Use Bayesian Priors (fetch real data from FRED)",
+    value=False,
+    help="Enable to use real economic data (PPI, FX rates) with Bayesian posterior estimation. This accounts for parameter uncertainty and gives more conservative risk estimates.",
+)
+
+n_runs = st.number_input(
+    "Number of Simulation Runs",
+    min_value=1000,
+    max_value=100000,
+    value=10000,
+    step=1000,
+)
 
 # Append n_runs to params here as order_size
 # very hacky, but it works for now.
@@ -446,6 +461,18 @@ if st.button("Run Global Simulation"):
             country: run_monte_carlo(params, n_runs)
             for country, params in countries.items()
         }
+        if use_bayesian:
+            # Build Bayesian simulators (fetches real data and fits posteriors)
+            bayesian_sims = create_bayesian_simulator(countries)
+            all_costs = {
+                country: bayesian_sims[country](n_runs) for country in countries.keys()
+            }
+        else:
+            # Use original hand-picked parameters
+            all_costs = {
+                country: run_monte_carlo(params, n_runs)
+                for country, params in countries.items()
+            }
 
         st.subheader("Summary Statistics")
         cols = st.columns(len(countries))
