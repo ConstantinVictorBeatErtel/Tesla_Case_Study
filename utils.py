@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.optimize import minimize
 
 
 def sample_from_spec(spec, n):
@@ -14,3 +15,70 @@ def sample_from_spec(spec, n):
     if dist == "beta":  # expects min, max
         return np.random.beta(spec["a"], spec["b"], n)
     raise ValueError(f"Unsupported dist: {dist}")
+
+
+def optimize_portfolio(all_costs, lambda_risk, constraints=None):
+    """
+    Optimizes portfolio allocation to minimize E[Cost] + lambda * SD[Cost]
+
+    Args:
+        all_costs: dict of {country: cost_array}
+        lambda_risk: risk aversion parameter
+        constraints: dict of {country: (min_alloc, max_alloc)} or None
+
+    Returns:
+        optimal allocations, expected cost, std dev
+    """
+    countries_list = list(all_costs.keys())
+    n_countries = len(countries_list)
+
+    def objective(weights):
+        # Calculate portfolio cost for all runs
+        portfolio = np.zeros(len(list(all_costs.values())[0]))
+        for i, country in enumerate(countries_list):
+            portfolio += weights[i] * all_costs[country]
+
+        expected_cost = np.mean(portfolio)
+        std_cost = np.std(portfolio)
+
+        return expected_cost + lambda_risk * std_cost
+
+    # Constraints: weights sum to 1, all weights >= 0
+    constraint_sum = {"type": "eq", "fun": lambda w: np.sum(w) - 1}
+    bounds = []
+
+    # Add custom constraints if provided
+    if constraints:
+        for country in countries_list:
+            if country in constraints:
+                min_alloc, max_alloc = constraints[country]
+                bounds.append((min_alloc, max_alloc))
+            else:
+                bounds.append((0, 1))
+    else:
+        bounds = [(0, 1) for _ in range(n_countries)]
+
+    # Initial guess: equal allocation
+    x0 = np.ones(n_countries) / n_countries
+
+    # Optimize
+    result = minimize(
+        objective, x0, method="SLSQP", bounds=bounds, constraints=[constraint_sum]
+    )
+
+    if result.success:
+        optimal_weights = result.x
+        portfolio = np.zeros(len(list(all_costs.values())[0]))
+        for i, country in enumerate(countries_list):
+            portfolio += optimal_weights[i] * all_costs[country]
+
+        return {
+            "allocations": {
+                countries_list[i]: w for i, w in enumerate(optimal_weights)
+            },
+            "expected_cost": np.mean(portfolio),
+            "std_cost": np.std(portfolio),
+            "portfolio_costs": portfolio,
+        }
+    else:
+        return None
