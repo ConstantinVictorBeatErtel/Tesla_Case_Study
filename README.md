@@ -179,3 +179,16 @@ This document describes how model inputs are configured in the simulation, compa
 
 **Data-driven Bayesian prior in `bayesian_priors.py`:**
 - **No data-driven replacement**
+
+---
+
+## Summary: Uncertainty Sources Comparison
+
+| Uncertainty Type | `app.py` | `bayesian_priors/` |
+|------------------|----------|-------------------|
+| **Mean** | Fixed (your guess) | Uncertain (estimated ± margin) |
+| **Variance** | Fixed (your guess) | Uncertain (estimated ± margin) |
+| **Shape** | Fixed (Normal/Beta/Lognormal) | Adapts (Student-t has fatter tails) |
+| **Distribution types** | Normal, Beta, Lognormal | **Student-t**, Beta (adjusted), Lognormal |
+| **Small sample penalty** | None | Yes (wider intervals) |
+| **Tail risk** | Standard | **Enhanced** (more extreme scenarios) |
