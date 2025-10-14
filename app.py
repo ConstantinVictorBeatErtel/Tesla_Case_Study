@@ -43,6 +43,24 @@ countries = {
         "skills_std": 0,
         "cancellation_prob": 0,
         "cancellation_impact": 50,
+        # --- NEW DISCRETE VARIABLES ---
+        "disruption_lambda": 0.002,  # NEW: Avg 0.2 disruptive events per shipment
+        "disruption_min_impact": 5000,  # NEW: Min 5,000 units lost per event
+        "disruption_max_impact": 15000,  # NEW: Max 15,000 units lost per event
+        "disruption_days_delayed": 20,  # NEW: Specific delay for this risk
+        # Border Delay Risks are impossible for US
+        "border_delay_lambda": 0.0,
+        "border_min_impact": 0,
+        "border_max_impact": 0,
+        "border_days_delayed": 0,
+        # Quality Risks (Binomial)
+        "damage_probability": 0.02,
+        "defective_probability": 0.03,  # NEW: Added a separate probability for defects
+        "quality_days_delayed": 15,  # NEW: A single delay for any quality issue
+        # Cancellation Risk (Bernoulli)
+        "cancellation_probability": 0.0001,
+        "cancellation_days_delayed": 90,
+        # --- NEW DISCRETE VARIABLES ---
     },
     "Mexico": {
         "raw": {"dist": "normal", "mean": 35, "std": 3.5},
@@ -80,6 +98,24 @@ countries = {
         "skills_std": 0.05,
         "cancellation_prob": 0,
         "cancellation_impact": 50,
+        # --- NEW DISCRETE VARIABLES ---
+        "disruption_lambda": 0.02,  # NEW: 2 out of a 100 are disrupted
+        "disruption_min_impact": 500,  # NEW: Min 5,000 units lost per event
+        "disruption_max_impact": 1500,  # NEW: Max 15,000 units lost per event
+        "disruption_days_delayed": 20,  # NEW: Specific delay for this risk
+        # Border Delay Risks are impossible for US
+        "border_delay_lambda": 0.2,
+        "border_min_impact": 100,
+        "border_max_impact": 1000,
+        "border_days_delayed": 20,
+        # Quality Risks (Binomial)
+        "damage_probability": 0.09,
+        "defective_probability": 0.07,  # NEW: Added a separate probability for defects
+        "quality_days_delayed": 15,  # NEW: A single delay for any quality issue
+        # Cancellation Risk (Bernoulli)
+        "cancellation_probability": 0.0001,
+        "cancellation_days_delayed": 90,
+        # --- NEW DISCRETE VARIABLES ---
     },
     "China": {
         "raw": {"dist": "normal", "mean": 30, "std": 3},
@@ -117,6 +153,24 @@ countries = {
         "skills_std": 0,
         "cancellation_prob": 0.3,  # Updated from recent shipping data (30% cancellations)
         "cancellation_impact": 50,
+        # --- NEW DISCRETE VARIABLES ---
+        "disruption_lambda": 0.3,  # NEW: Avg 0.2 disruptive events per shipment
+        "disruption_min_impact": 100,  # NEW: Min 5,000 units lost per event
+        "disruption_max_impact": 1000,  # NEW: Max 15,000 units lost per event
+        "disruption_days_delayed": 20,  # NEW: Specific delay for this risk
+        # Border Delay Risks are impossible for US
+        "border_delay_lambda": 0.2,
+        "border_min_impact": 100,
+        "border_max_impact": 1000,
+        "border_days_delayed": 0,
+        # Quality Risks (Binomial)
+        "damage_probability": 0.0001,
+        "defective_probability": 0.0001,  # NEW: Added a separate probability for defects
+        "quality_days_delayed": 15,  # NEW: A single delay for any quality issue
+        # Cancellation Risk (Bernoulli)
+        "cancellation_probability": 0.001,
+        "cancellation_days_delayed": 90,
+        # --- NEW DISCRETE VARIABLES ---
     },
 }
 
