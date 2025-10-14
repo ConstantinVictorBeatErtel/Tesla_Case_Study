@@ -37,10 +37,10 @@ class CountrySamplers:
     yield_rate: Callable[[int], np.ndarray]
 
     # Keep other params as constants (no good public data)
-    indirect_cost: float
-    electricity_cost: float
-    depreciation_cost: float
-    working_capital: float
+    # indirect_cost: float
+    # electricity_cost: float
+    # depreciation_cost: float
+    # working_capital: float
 
 
 def build_samplers_for_country(country: str, baseline_params: Dict) -> CountrySamplers:
@@ -53,13 +53,16 @@ def build_samplers_for_country(country: str, baseline_params: Dict) -> CountrySa
     # Raw materials
     try:
         raw_post = estimate_raw_material_posterior(baseline_params["raw"]["mean"])
-        raw_sampler = lambda n: raw_post.sample_predictive(n)
-        print("  ✓ Raw materials: Posterior from PPI data")
+
+        def raw_sampler(n):
+            return raw_post.sample_predictive(n)
+
     except Exception:
         raw_mean = baseline_params["raw"]["mean"]
         raw_std = baseline_params["raw"]["std"]
-        raw_sampler = lambda n: np.random.normal(raw_mean, raw_std, n)
-        print(f"  ⚠️  Raw materials: Using baseline Normal({raw_mean}, {raw_std})")
+
+        def raw_sampler(n):
+            return np.random.normal(raw_mean, raw_std, n)
 
     # Labor (no good public data - use baseline)
     labor_mean = baseline_params["labor"]["mean"]
@@ -87,7 +90,10 @@ def build_samplers_for_country(country: str, baseline_params: Dict) -> CountrySa
         print("  ✓ FX: Posterior from FRED exchange rate data")
     except Exception:
         fx_std = baseline_params["currency_std"]
-        fx_sampler = lambda n: (1 + np.random.normal(0, fx_std, n))
+
+        def fx_sampler(n):
+            return 1 + np.random.normal(0, fx_std, n)
+
         print(f"  ⚠️  FX: Using baseline volatility {fx_std}")
 
     # Manufacturing yield
@@ -97,12 +103,18 @@ def build_samplers_for_country(country: str, baseline_params: Dict) -> CountrySa
         )
         uncertainty_map = {"US": "medium", "Mexico": "high", "China": "low"}
         yield_post = estimate_yield_posterior(yield_baseline, uncertainty_map[country])
-        yield_sampler = lambda n: yield_post.sample_predictive(n).clip(0.01, 0.99)
+
+        def yield_sampler(n):
+            return yield_post.sample_predictive(n).clip(0.01, 0.99)
+
         print(f"  ✓ Yield: Beta posterior (uncertainty={uncertainty_map[country]})")
     except Exception:
         a = baseline_params["yield_params"]["a"]
         b = baseline_params["yield_params"]["b"]
-        yield_sampler = lambda n: beta_dist.rvs(a, b, size=n)
+
+        def yield_sampler(n):
+            return beta_dist.rvs(a, b, size=n)
+
         print(f"  ⚠️  Yield: Using baseline Beta({a}, {b})")
 
     return CountrySamplers(
@@ -111,9 +123,8 @@ def build_samplers_for_country(country: str, baseline_params: Dict) -> CountrySa
         logistics=logistics_sampler,
         fx_multiplier=fx_sampler,
         yield_rate=yield_sampler,
-        indirect_cost=baseline_params["indirect"]["mean"],
-        electricity_cost=baseline_params["electricity"]["mean"],
-        depreciation_cost=baseline_params["depreciation"]["mean"],
-        working_capital=baseline_params["working_capital"]["mean"],
+        # indirect_cost=sample_from_spec(baseline_params["indirect"])
+        # electricity_cost=sample_from_spec(baseline_params["electricity"]),
+        # depreciation_cost=sample_from_spec(baseline_params["depcreciation"]),
+        # working_capital=sample_from_spec(baseline_params["working_capital"]),
     )
-

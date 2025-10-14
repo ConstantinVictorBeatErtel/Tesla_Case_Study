@@ -1,33 +1,28 @@
 from numpy import sum
 from numpy.random import binomial, poisson, uniform
 
-from live_data import get_most_recent_fed_funds_rate
-from structs import DiscreteRisks, DiscreteRiskSimulation, DiscreteRisksParams
-
-# --- Model Parameters ---
-# these parameters are to explain how a delayed part can be mapped to a financial cost
-
-model_y_price = 41630
-model_y_manufacturing_cost = 38000
-model_y_profit = model_y_price - model_y_manufacturing_cost
-wacc = 0.0877
-expedited_shipping_cost_per_unit = 50.71
-fed_funds_rate = get_most_recent_fed_funds_rate()
+from config import (
+    EXPEDITED_SHIPPING_COST_PER_HEADLAMP,
+    FED_FUNDS_RATE,
+    MODEL_Y_MANUFACTURING_COST,
+    MODEL_Y_PROFIT,
+    WACC,
+)
+from structs import DiscreteRiskSimulation, DiscreteRisksParams
 
 # --- Model Functions ---
-# below calculate the costs associated with a delayed part
 
 
 def opportunity_cost(delayed_units: int):
-    return model_y_profit * delayed_units * ((1 + fed_funds_rate) / 365)
+    return MODEL_Y_PROFIT * delayed_units * ((1 + FED_FUNDS_RATE) / 365)
 
 
 def expedited_shipping_cost(delayed_units: int):
-    return expedited_shipping_cost_per_unit * delayed_units
+    return EXPEDITED_SHIPPING_COST_PER_HEADLAMP * delayed_units
 
 
 def carry_cost(days_delayed: int):
-    return wacc * model_y_manufacturing_cost * days_delayed
+    return WACC * MODEL_Y_MANUFACTURING_COST * days_delayed
 
 
 def total_cost(delayed_units: int, days_delayed: int):
@@ -109,49 +104,14 @@ def generate_last_minute_cancellation_risk(
     )
 
 
-# --- Main Function ---
-def generate_discrete_risks(params: DiscreteRisksParams) -> DiscreteRisks:
-    damaged = generate_damaged_risk(
-        params.order_size, params.damage_probability, params.quality_days_delayed
-    )
-    defective = generate_defective_risk(
-        params.order_size, params.defective_probability, params.quality_days_delayed
-    )
-    cancelled = generate_last_minute_cancellation_risk(
-        params.cancellation_probability,
-        params.order_size,
-        params.cancellation_days_delayed,
-    )
-    border_delay = generate_border_delay_risk(
-        params.border_delay_lambda,
-        params.border_delay_min,
-        params.border_delay_max,
-        params.border_delay_days_delayed,
-    )
-    disruption = generate_disruption_risk(
-        params.disruption_lambda,
-        params.disruption_min,
-        params.disruption_max,
-        params.disruption_days_delayed,
-    )
-
-    return DiscreteRisks(
-        disruptions=disruption,
-        border_delays=border_delay,
-        damaged=damaged,
-        defectives=defective,
-        last_minute_cancellations=cancelled,
-    )
-
-
-def create_params_from_dict(country_dict: dict) -> DiscreteRisksParams:
+def create_params_from_dict(country_dict: dict, order_size: int) -> DiscreteRisksParams:
     """
     Reads a dictionary of parameters for a country and creates a
     structured DiscreteRisksParams object.
     """
     print(country_dict)
     return DiscreteRisksParams(
-        order_size=country_dict["order_size"],
+        order_size=order_size,
         disruption_lambda=country_dict["disruption_lambda"],
         disruption_min=country_dict["disruption_min_impact"],
         disruption_max=country_dict["disruption_max_impact"],
