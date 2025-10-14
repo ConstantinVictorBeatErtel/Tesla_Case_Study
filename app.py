@@ -12,13 +12,13 @@ import copy
 countries = {
     'US': {
         'raw': {'dist': 'normal', 'mean': 40, 'std': 4},
-        'labor': {'dist': 'normal', 'mean': 12, 'std': 0.6},
-        'indirect': {'dist': 'normal', 'mean': 10, 'std': 0.5},
+        'labor':     {'dist': 'lognormal', 'mean': 2.48,   'std': 0.15}, # mean ~12, std ~2
+        'indirect':  {'dist': 'gamma', 'shape': 25.0, 'scale': 0.40},  # mean 10, std 2
         'logistics': {'dist': 'normal', 'mean': 9, 'std': 0},
-        'electricity': {'dist': 'normal', 'mean': 4, 'std': 0.4},
+        'electricity': {'dist': 'triangular', 'min': 3.5, 'mode': 4.0, 'max': 4.5},
         'depreciation': {'dist': 'normal', 'mean': 5, 'std': 0.25},
         'working_capital': {'dist': 'normal', 'mean': 5, 'std': 0.5},
-        'yield_params': {'a': 79, 'b': 20},  # Approx for mean 0.8, std 0.04
+        'yield_params': {'dist': 'beta', 'a': 79, 'b': 20},  # Approx for mean 0.8, std 0.04
         'tariff': {'fixed': 0},
         'tariff_escal': {'mean': 0, 'std': 0},
         'currency_std': 0,
@@ -37,13 +37,13 @@ countries = {
     },
     'Mexico': {
         'raw': {'dist': 'normal', 'mean': 35, 'std': 3.5},
-        'labor': {'dist': 'normal', 'mean': 8, 'std': 0.4},
-        'indirect': {'dist': 'normal', 'mean': 8, 'std': 0.4},
+        'labor':     {'dist': 'lognormal', 'mean': 2.0635, 'std': 0.1786}, # mean ~8, std ~1.5
+        'indirect':  {'dist': 'gamma',     'shape': 20.66, 'scale': 0.387},  # mean 8, std 1.75
         'logistics': {'dist': 'normal', 'mean': 7, 'std': 0.056},
-        'electricity': {'dist': 'normal', 'mean': 3, 'std': 0.3},
+        'electricity': {'dist': 'triangular', 'min': 2.5, 'mode': 3.0, 'max': 3.5},
         'depreciation': {'dist': 'normal', 'mean': 1, 'std': 0.05},
         'working_capital': {'dist': 'normal', 'mean': 6, 'std': 0.6},
-        'yield_params': {'a': 12, 'b': 1},  # Approx for mean 0.9, std 0.08
+        'yield_params': {'dist': 'beta', 'a': 12, 'b': 1},  # Approx for mean 0.9, std 0.08
         'tariff': {'fixed': 15.5},
         'tariff_escal': {'mean': 0, 'std': 2},
         'currency_std': 0.08,
@@ -62,13 +62,13 @@ countries = {
     },
     'China': {
         'raw': {'dist': 'normal', 'mean': 30, 'std': 3},
-        'labor': {'dist': 'normal', 'mean': 4, 'std': 0.2},
-        'indirect': {'dist': 'normal', 'mean': 4, 'std': 0.2},
+        'labor': {'dist': 'lognormal', 'mean': 1.379,  'std': 0.120}, # mean ~4, std ~0.5
+        'indirect':  {'dist': 'gamma',     'shape': 16.0, 'scale': 0.25},  # mean 4, std 1
         'logistics': {'dist': 'lognormal', 'mean': 12, 'std': 8},  # High volatility from trade disruptions
-        'electricity': {'dist': 'normal', 'mean': 4, 'std': 0.4},
+        'electricity': {'dist': 'triangular', 'min': 3.60,'mode': 4.00,'max': 4.40},
         'depreciation': {'dist': 'normal', 'mean': 5, 'std': 0.25},
         'working_capital': {'dist': 'normal', 'mean': 10, 'std': 1},
-        'yield_params': {'a': 49, 'b': 3},  # Approx for mean 0.95, std 0.03
+        'yield_params': {'dist': 'beta', 'a': 49, 'b': 3},  # Approx for mean 0.95, std 0.03
         'tariff': {'fixed': 15},
         'tariff_escal': {'mean': 0, 'std': 2},
         'currency_std': 0.03,
@@ -87,18 +87,34 @@ countries = {
     }
 }
 
+
+# --- Helper Functions ---
+def sample_from_spec(spec, n):
+    dist = spec.get('dist', 'normal').lower()
+    if dist == 'normal':
+        return np.random.normal(spec['mean'], spec['std'], n)
+    if dist == 'lognormal':          # expects log-space μ, σ
+        return np.random.lognormal(spec['mean'], spec['std'], n)
+    if dist == 'triangular':         # expects min, mode, max
+        return np.random.triangular(spec['min'], spec['mode'], spec['max'], n)
+    if dist == 'gamma':              # expects shape k, scale θ
+        return np.random.gamma(spec['shape'], spec['scale'], n)
+    if dist == 'beta':            # expects min, max
+        return np.random.beta(spec['a'], spec['b'], n)
+    raise ValueError(f"Unsupported dist: {dist}")
+
 # --- Simulation Function ---
 def simulate_country(params, n_runs):
     """Runs a Monte Carlo simulation for a single country's sourcing cost."""
     # Sample costs from distributions
-    raw = np.random.normal(params['raw']['mean'], params['raw']['std'], n_runs)
-    labor = np.random.normal(params['labor']['mean'], params['labor']['std'], n_runs)
-    indirect = np.random.normal(params['indirect']['mean'], params['indirect']['std'], n_runs)
-    electricity = np.random.normal(params['electricity']['mean'], params['electricity']['std'], n_runs)
-    depreciation = np.random.normal(params['depreciation']['mean'], params['depreciation']['std'], n_runs)
-    working = np.random.normal(params['working_capital']['mean'], params['working_capital']['std'], n_runs)
-    yield_ = beta.rvs(params['yield_params']['a'], params['yield_params']['b'], size=n_runs)
-
+    raw = sample_from_spec(params['raw'], n_runs)
+    labor = sample_from_spec(params['labor'], n_runs)
+    indirect = sample_from_spec(params['indirect'], n_runs)
+    electricity = sample_from_spec(params['electricity'], n_runs)
+    depreciation = sample_from_spec(params['depreciation'], n_runs)
+    working = sample_from_spec(params['working_capital'], n_runs)
+    yield_ = sample_from_spec(params['yield_params'], n_runs)
+    
     # Handle lognormal distribution for logistics
     if params['logistics']['dist'] == 'lognormal':
         m, s = params['logistics']['mean'], params['logistics']['std']
@@ -279,6 +295,88 @@ if st.button("Run Global Simulation"):
         fig = px.line(df_percentiles, x='Percentile', y='Cost ($)', color='Country', title='Cost Distribution by Percentile', labels={'Percentile': 'Cost Percentile', 'Cost ($)': 'Total Cost ($/lamp)'}, hover_data={'Cost ($)': ':.2f'})
         fig.update_layout(legend_title_text='Country', yaxis_title="Total Cost ($/lamp)", xaxis_title="Cost Percentile (%)")
         st.plotly_chart(fig, use_container_width=True)
+        
+        
+        # ---------- New: richer analytics ----------
+        # Build a tidy dataframe of all samples for plotting
+        stacked = []
+        for country, costs in all_costs.items():
+            stacked.append(pd.DataFrame({'Country': country, 'Cost ($/lamp)': costs}))
+        df_samples = pd.concat(stacked, ignore_index=True)
+
+        st.subheader("More Views of the Cost Distributions")
+        tab1, tab2, tab3, tab4 = st.tabs(
+            ["Histogram/KDE", "Box / Violin", "P(Cheapest)", "Risk vs. Return"]
+        )
+
+        # === TAB 1: Histogram/KDE overlays ===
+        with tab1:
+            # Histogram overlay
+            fig_h = go.Figure()
+            for country, costs in all_costs.items():
+                fig_h.add_trace(go.Histogram(x=costs, name=country, opacity=0.55, nbinsx=60))
+            fig_h.update_layout(
+                barmode='overlay',
+                title="Overlaid Histograms of Total Cost",
+                xaxis_title="Total Cost ($/lamp)",
+                yaxis_title="Frequency"
+            )
+            st.plotly_chart(fig_h, use_container_width=True)
+
+            # Smoothed CDF/Percentile view (you already have a percentile plot above; here is an ECDF)
+            st.markdown("**Cumulative Distribution (ECDF)** — lower curves to the left are cheaper more often.")
+            fig_ecdf = go.Figure()
+            for country, costs in all_costs.items():
+                xs = np.sort(costs)
+                ys = np.arange(1, len(xs)+1) / len(xs)
+                fig_ecdf.add_trace(go.Scatter(x=xs, y=ys, mode='lines', name=country))
+            fig_ecdf.update_layout(title="Empirical CDF", xaxis_title="Total Cost ($/lamp)", yaxis_title="Cumulative Probability")
+            st.plotly_chart(fig_ecdf, use_container_width=True)
+
+        # === TAB 2: Box / Violin ===
+        with tab2:
+            colb1, colb2 = st.columns(2)
+            with colb1:
+                fig_box = px.box(df_samples, x='Country', y='Cost ($/lamp)', points=False, title="Box Plot by Country")
+                st.plotly_chart(fig_box, use_container_width=True)
+            with colb2:
+                fig_violin = px.violin(df_samples, x='Country', y='Cost ($/lamp)', box=True, points=False, title="Violin Plot by Country")
+                st.plotly_chart(fig_violin, use_container_width=True)
+
+        # === TAB 3: Probability of Being Cheapest ===
+        with tab3:
+            # For each iteration, find which country had the minimum cost
+            stacked_matrix = np.vstack([all_costs[c] for c in countries.keys()])
+            winners = np.argmin(stacked_matrix, axis=0)  # index of cheapest per run
+            keys = list(countries.keys())
+            counts = pd.Series(winners).value_counts().reindex(range(len(keys))).fillna(0).astype(int)
+            probs = (counts / len(winners)).values
+
+            df_win = pd.DataFrame({'Country': keys, 'P(Cheapest)': probs})
+            fig_bar = px.bar(df_win, x='Country', y='P(Cheapest)', text='P(Cheapest)', range_y=[0,1],
+                            title="Probability Each Country is Cheapest")
+            fig_bar.update_traces(texttemplate='%{text:.1%}', textposition='outside')
+            fig_bar.update_layout(yaxis_tickformat='.0%', uniformtext_minsize=12)
+            st.plotly_chart(fig_bar, use_container_width=True)
+
+            st.caption("This is the single most decision-useful number: how often each site wins on total landed cost across all simulated futures.")
+
+        # === TAB 4: Risk vs. Return (Mean vs. Std Dev) ===
+        with tab4:
+            means = {c: np.mean(v) for c, v in all_costs.items()}
+            stds  = {c: np.std(v)  for c, v in all_costs.items()}
+            df_risk = pd.DataFrame({
+                'Country': list(means.keys()),
+                'Expected Cost': list(means.values()),
+                'Risk (Std Dev)': [stds[c] for c in means.keys()]
+            })
+            fig_scatter = px.scatter(df_risk, x='Expected Cost', y='Risk (Std Dev)', text='Country',
+                                    title="Risk–Return Map (lower-left is better)", size='Risk (Std Dev)')
+            fig_scatter.update_traces(textposition='top center')
+            st.plotly_chart(fig_scatter, use_container_width=True)
+
+            st.caption("Use this to discuss trade-offs: a site with slightly higher mean but much lower risk can still be preferred depending on risk tolerance.")
+
 
 st.markdown("---")
 
