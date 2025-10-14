@@ -26,10 +26,11 @@ class DiscreteRisksParams:
     border_delay_min: int
     border_delay_max: int
     border_delay_days_delayed: int
-    damage_probability: float  # damaged ~ binomial
-    damage_days_delayed: int
-    defective_probability: float  # defectives ~ binomial
-    defective_days_delayed: int
     cancellation_probability: float  # cancellation ~ bernoulli
     cancellation_days_delayed: int
+    # Next two parameters are for quality risks, which have the same delay
+    damage_probability: float  # damaged ~ binomial
+    defective_probability: float  # defectives ~ binomial
+    defective_days_delayed: int
+    quality_days_delayed: int
     order_size: int

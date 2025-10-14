@@ -112,10 +112,10 @@ def generate_last_minute_cancellation_risk(
 # --- Main Function ---
 def generate_discrete_risks(params: DiscreteRisksParams) -> DiscreteRisks:
     damaged = generate_damaged_risk(
-        params.order_size, params.damage_probability, params.damage_days_delayed
+        params.order_size, params.damage_probability, params.quality_days_delayed
     )
     defective = generate_defective_risk(
-        params.order_size, params.defective_probability, params.defective_days_delayed
+        params.order_size, params.defective_probability, params.quality_days_delayed
     )
     cancelled = generate_last_minute_cancellation_risk(
         params.cancellation_probability,
@@ -141,4 +141,27 @@ def generate_discrete_risks(params: DiscreteRisksParams) -> DiscreteRisks:
         damaged=damaged,
         defectives=defective,
         last_minute_cancellations=cancelled,
+    )
+
+
+def create_params_from_dict(country_dict: dict) -> DiscreteRisksParams:
+    """
+    Reads a dictionary of parameters for a country and creates a
+    structured DiscreteRisksParams object.
+    """
+    return DiscreteRisksParams(
+        order_size=country_dict["order_size"],
+        disruption_lambda=country_dict["disruption_lambda"],
+        disruption_min_impact=country_dict["disruption_min_impact"],
+        disruption_max_impact=country_dict["disruption_max_impact"],
+        disruption_days_delayed=country_dict["disruption_days_delayed"],
+        border_delay_lambda=country_dict["border_delay_lambda"],
+        border_min_impact=country_dict["border_min_impact"],
+        border_max_impact=country_dict["border_max_impact"],
+        border_days_delayed=country_dict["border_days_delayed"],
+        damage_probability=country_dict["damage_probability"],
+        defective_probability=country_dict["defective_probability"],
+        quality_days_delayed=country_dict["quality_days_delayed"],
+        cancellation_probability=country_dict["cancellation_probability"],
+        cancellation_days_delayed=country_dict["cancellation_days_delayed"],
     )
