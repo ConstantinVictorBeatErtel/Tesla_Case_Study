@@ -7,18 +7,23 @@ WHY BAYESIAN?
 - Bayesian approach: Account for parameter uncertainty via posterior predictive
 - Result: More conservative risk estimates (wider tails = Student-t vs Normal)
 
+WHY THIS INCREASES SUPPLY CHAIN READINESS:
+- More realistic tail risk: Fatter tails in student-t distriubtion = better prepared for extreme cost scenarios
+- Data-driven: Uses actual PPI/FX data instead of guesses
+- Conservative planning: Wider confidence intervals → less likely to underestimate costs
+
 WHAT THIS DOES:
 1. Fetches real data (PPI, FX rates, etc.)
 2. Fits Bayesian posterior from data
 3. Returns SAMPLER FUNCTIONS that draw from posterior predictive distributions
 4. These samplers replace your hand-picked parameters in app.py
 
-VARIABLES WE ARE DOING THIS FOR
-- [x] raw material
-- [ ] labor
+VARIABLES WE ARE DOING THIS FOR (with real data):
+- [x] raw material (PPI data → Student-t samples)
+- [ ] labor 
 - [ ] logistics
-- [x] fx
-- [x] yield
+- [x] fx (FRED exchange rates → Student-t samples)
+- [x] yield (uncertainty-adjusted Beta)
 - [ ] indirect
 - [ ] electricity
 - [ ] depreciation
@@ -84,8 +89,20 @@ def fetch_fred_series(series_id: str, months: int = 24) -> pd.Series:
 @dataclass
 class NormalPosterior:
     """
-    Posterior from Normal-Inverse-Gamma prior.
-    Represents: "Based on N observations, parameters are PROBABLY around (μ, σ²)"
+    Captures uncertainty about a Normal distribution's mean & variance from limited data.
+    
+    WHY NOT JUST USE SAMPLE MEAN/STD?
+    With only 24 months of data, you can't be certain those ARE the true parameters.
+    This class accounts for that uncertainty.
+    
+    HOW IT WORKS:
+    - Uses Normal-Inverse-Gamma prior (models mean & variance uncertainty together)
+    - Conjugate prior = closed-form math updates (fast, stable)
+    - Gives Student-t predictive distribution (fatter tails than Normal for small data)
+    
+    PARAMETERS:
+    - mu, kappa: Best guess for mean, and confidence in that guess
+    - alpha, beta: Control uncertainty about the variance
     """
 
     mu: float  # Posterior mean location
