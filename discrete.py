@@ -1,5 +1,5 @@
 from numpy import sum
-from numpy.random import binomial, poisson, uniform
+from numpy.random import binomial, choice, poisson, uniform
 
 from config import (
     EXPEDITED_SHIPPING_COST_PER_HEADLAMP,
@@ -34,6 +34,15 @@ def total_cost(delayed_units: int, days_delayed: int):
 
 
 # --- Distribution Generators ---
+def generate_tariff_escalation(tariff_escalation_probability: float) -> float:
+    tariff_escalation = binomial(1, tariff_escalation_probability, 1)
+
+    if tariff_escalation == 0:
+        return 0
+    else:
+        return choice([0.25, 0.50, 1], 1)[0]
+
+
 def generate_disruption_risk(
     disruption_lambda: float,
     min_impact: int,
@@ -125,4 +134,5 @@ def create_params_from_dict(country_dict: dict, order_size: int) -> DiscreteRisk
         quality_days_delayed=country_dict["quality_days_delayed"],
         cancellation_probability=country_dict["cancellation_probability"],
         cancellation_days_delayed=country_dict["cancellation_days_delayed"],
+        tariff_escalation=country_dict["tariff_escal"],
     )

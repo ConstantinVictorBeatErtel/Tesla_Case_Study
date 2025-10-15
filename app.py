@@ -7,7 +7,7 @@ import streamlit as st
 
 from config import COUNTRIES
 from simulation import run_monte_carlo
-from utils import optimize_portfolio
+from utils import optimize_without_yield
 
 # --- Streamlit App ---
 st.set_page_config(layout="wide")
@@ -182,7 +182,7 @@ with opt_col1:
     lambda_risk = st.slider(
         "Risk Aversion (λ)",
         min_value=0.0,
-        max_value=5.0,
+        max_value=20.0,
         value=1.0,
         step=0.1,
         help="λ=0: minimize expected cost only. Higher λ: care more about reducing risk.",
@@ -236,10 +236,15 @@ if run_optimization:
             yield_rate = (order_size - expected_lost_units) / order_size
             expected_yields[country] = yield_rate
 
+        print(expected_yields)
+
         # STEP 2: Run the financial optimization (this part is unchanged)
         opt_constraints = constraints if add_constraints else None
-        result = optimize_portfolio(
-            all_costs_per_lamp, expected_yields, lambda_risk, opt_constraints
+        # result = optimize_portfolio(
+        #     all_costs_per_lamp, expected_yields, lambda_risk, opt_constraints
+        # )
+        result = optimize_without_yield(
+            all_costs_per_lamp, lambda_risk, opt_constraints
         )
 
         if result:
@@ -279,9 +284,9 @@ if run_optimization:
                 st.markdown("---")  # Visual separator
 
                 # --- The rest of your existing display code ---
-                st.markdown("##### Financial Outcome")
-                st.metric("Expected Cost per Unit", f"${result['expected_cost']:.2f}")
-                st.metric("Standard Deviation per Unit", f"${result['std_cost']:.2f}")
+                # st.markdown("##### Financial Outcome")
+                # st.metric("Expected Cost per Unit", f"${result['expected_cost']:.2f}")
+                # st.metric("Standard Deviation per Unit", f"${result['std_cost']:.2f}")
 
                 st.markdown("##### Optimal Allocations")
 

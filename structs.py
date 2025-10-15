@@ -14,6 +14,7 @@ class DiscreteRisks:
     last_minute_cancellations: DiscreteRiskSimulation
     damaged: DiscreteRiskSimulation
     defectives: DiscreteRiskSimulation
+    tariff_cost: float
 
 
 @dataclass
@@ -33,3 +34,4 @@ class DiscreteRisksParams:
     defective_probability: float  # defectives ~ binomial
     quality_days_delayed: int
     order_size: int
+    tariff_escalation: float  # probability that there was a tariff escalation
