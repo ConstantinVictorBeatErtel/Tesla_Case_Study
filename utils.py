@@ -17,7 +17,7 @@ def sample_from_spec(spec, n):
     raise ValueError(f"Unsupported dist: {dist}")
 
 
-def optimize_portfolio(all_costs, lambda_risk, constraints=None):
+def optimize_portfolio(all_costs, yields, lambda_risk, constraints=None):
     """
     Optimizes portfolio allocation to minimize E[Cost] + lambda * SD[Cost]
 
@@ -35,11 +35,20 @@ def optimize_portfolio(all_costs, lambda_risk, constraints=None):
     def objective(weights):
         # Calculate portfolio cost for all runs
         portfolio = np.zeros(len(list(all_costs.values())[0]))
+        portfolio_yield = 0
+
         for i, country in enumerate(countries_list):
             portfolio += weights[i] * all_costs[country]
+            portfolio_yield += weights[i] * yields[country]
 
-        expected_cost = np.mean(portfolio)
-        std_cost = np.std(portfolio)
+        # GUARD: Avoid division by zero if yield is somehow zero
+        if portfolio_yield <= 0:
+            return np.inf
+
+        cost_per_good_unit = portfolio / portfolio_yield
+
+        expected_cost = np.mean(cost_per_good_unit)
+        std_cost = np.std(cost_per_good_unit)
 
         return expected_cost + lambda_risk * std_cost
 

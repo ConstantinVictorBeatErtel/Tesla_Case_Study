@@ -215,7 +215,7 @@ if run_optimization:
             for country, params in COUNTRIES.items()
         }
 
-        # Separate the results for clarity
+        # A) Separate the results for clarity
         all_costs = {
             country: results["total_cost"] for country, results in all_results.items()
         }
@@ -228,9 +228,19 @@ if run_optimization:
             for country, total_costs in all_costs.items()
         }
 
+        # B) CALCULATE EXPECTED YIELD FOR EACH COUNTRY
+        # Yield = (units ordered - expected lost units) / units ordered
+        expected_yields = {}
+        for country, results in all_results.items():
+            expected_lost_units = np.mean(results["lost_units"])
+            yield_rate = (order_size - expected_lost_units) / order_size
+            expected_yields[country] = yield_rate
+
         # STEP 2: Run the financial optimization (this part is unchanged)
         opt_constraints = constraints if add_constraints else None
-        result = optimize_portfolio(all_costs_per_lamp, lambda_risk, opt_constraints)
+        result = optimize_portfolio(
+            all_costs_per_lamp, expected_yields, lambda_risk, opt_constraints
+        )
 
         if result:
             with opt_col2:

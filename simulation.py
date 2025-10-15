@@ -39,6 +39,7 @@ def factory_costs_with_bayesian_priors(
     tariff = risk_params["tariff"]["fixed"]
     if "fixed" in risk_params["tariff_escal"]:
         tariff += risk_params["tariff_escal"]["fixed"]
+    # TODO: modify
     else:
         tariff += np.random.normal(
             risk_params["tariff_escal"]["mean"], risk_params["tariff_escal"]["std"]

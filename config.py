@@ -80,7 +80,7 @@ COUNTRIES = {
             "a": 12,
             "b": 1,
         },  # Approx for mean 0.9, std 0.08
-        "tariff": {"fixed": 15.5},
+        "tariff": {"fixed": 0.25},
         "tariff_escal": {"mean": 0, "std": 2},
         "currency_std": 0.08,
         "disruption_prob": 0.1,
@@ -135,7 +135,7 @@ COUNTRIES = {
             "a": 49,
             "b": 3,
         },  # Approx for mean 0.95, std 0.03
-        "tariff": {"fixed": 15},
+        "tariff": {"fixed": 0.25},
         "tariff_escal": {"mean": 0, "std": 2},
         "currency_std": 0.03,
         "disruption_prob": 0.2,
