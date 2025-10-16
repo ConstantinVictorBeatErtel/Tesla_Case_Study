@@ -26,20 +26,20 @@ COUNTRIES = {
         # Discrete variables: these are the qualitative risks to the supply chain process
         # The USA has no tariffs or currency volatility
         "tariff": {"fixed": 0},
-        "tariff_escal": {"fixed": 0},
+        "tariff_escal": 0,
         "currency_std": 0,
-        "disruption_prob": 0.05,
-        "disruption_impact": 10,
-        "border_mean": 0,
-        "border_std": 0,
-        "border_threshold": 2,
-        "border_cost_per_hr": 10,
-        "damage_prob": 0.01,
-        "damage_impact": 20,
-        "skills_mean": 0,
-        "skills_std": 0,
-        "cancellation_prob": 0,
-        "cancellation_impact": 50,
+        # "disruption_prob": 0.05,
+        # "disruption_impact": 10,
+        # "border_mean": 0,
+        # "border_std": 0,
+        # "border_threshold": 2,
+        # "border_cost_per_hr": 10,
+        # "damage_prob": 0.01,
+        # "damage_impact": 20,
+        # "skills_mean": 0,
+        # "skills_std": 0,
+        # "cancellation_prob": 0,
+        # "cancellation_impact": 50,
         # --- NEW DISCRETE VARIABLES ---
         "disruption_lambda": 0.002,  # NEW: Avg 0.2 disruptive events per shipment
         "disruption_min_impact": 5000,  # NEW: Min 5,000 units lost per event
@@ -81,25 +81,25 @@ COUNTRIES = {
             "b": 1,
         },  # Approx for mean 0.9, std 0.08
         "tariff": {"fixed": 0.25},
-        "tariff_escal": {"mean": 0, "std": 2},
+        "tariff_escal": 0.1,
         "currency_std": 0.08,
-        "disruption_prob": 0.1,
-        "disruption_impact": 10000,
-        "border_mean": 0.83,
-        "border_std": 0.67,
-        "border_threshold": 2,
-        "border_cost_per_hr": 10,
-        "damage_prob": 0.015,
-        "damage_impact": 20,
-        "skills_mean": 0,
-        "skills_std": 0.05,
-        "cancellation_prob": 0,
-        "cancellation_impact": 50,
+        # "disruption_prob": 0.1,
+        # "disruption_impact": 10000,
+        # "border_mean": 0.83,
+        # "border_std": 0.67,
+        # "border_threshold": 2,
+        # "border_cost_per_hr": 10,
+        # "damage_prob": 0.015,
+        # "damage_impact": 20,
+        # "skills_mean": 0,
+        # "skills_std": 0.05,
+        # "cancellation_prob": 0,
+        # "cancellation_impact": 50,
         # --- NEW DISCRETE VARIABLES ---
         "disruption_lambda": 0.1,  # NEW: 2 out of a 100 are disrupted
         "disruption_min_impact": 500,  # NEW: Min 5,000 units lost per event
         "disruption_max_impact": 1500,  # NEW: Max 15,000 units lost per event
-        "disruption_days_delayed": 20,  # NEW: Specific delay for this risk
+        "disruption_days_delayed": 5,  # NEW: Specific delay for this risk
         # Border Delay Risks for Mexico
         "border_delay_lambda": 0.83,
         "border_min_impact": 100,
@@ -136,25 +136,25 @@ COUNTRIES = {
             "b": 3,
         },  # Approx for mean 0.95, std 0.03
         "tariff": {"fixed": 0.25},
-        "tariff_escal": {"mean": 0, "std": 2},
+        "tariff_escal": 0.15,
         "currency_std": 0.03,
-        "disruption_prob": 0.2,
-        "disruption_impact": 10,
-        "border_mean": 0,
-        "border_std": 0,
-        "border_threshold": 2,
-        "border_cost_per_hr": 10,
-        "damage_prob": 0.02,
-        "damage_impact": 20,
-        "skills_mean": 0,
-        "skills_std": 0,
-        "cancellation_prob": 0.3,  # Updated from recent shipping data (30% cancellations)
-        "cancellation_impact": 50,
+        # "disruption_prob": 0.2,
+        # "disruption_impact": 10,
+        # "border_mean": 0,
+        # "border_std": 0,
+        # "border_threshold": 2,
+        # "border_cost_per_hr": 10,
+        # "damage_prob": 0.02,
+        # "damage_impact": 20,
+        # "skills_mean": 0,
+        # "skills_std": 0,
+        # "cancellation_prob": 0.3,  # Updated from recent shipping data (30% cancellations)
+        # "cancellation_impact": 50,
         # --- NEW DISCRETE VARIABLES ---
-        "disruption_lambda": 0.2,  # NEW: Avg 0.2 disruptive events per shipment
-        "disruption_min_impact": 100,  # NEW: Min 5,000 units lost per event
-        "disruption_max_impact": 1000,  # NEW: Max 15,000 units lost per event
-        "disruption_days_delayed": 20,  # NEW: Specific delay for this risk
+        "disruption_lambda": 0.15,  # NEW: Avg 0.2 disruptive events per shipment
+        "disruption_min_impact": 100,
+        "disruption_max_impact": 1000,
+        "disruption_days_delayed": 10,
         # Border Delay Risks are impossible for China
         "border_delay_lambda": 0,
         "border_min_impact": 100,
@@ -165,7 +165,7 @@ COUNTRIES = {
         "defective_probability": 0,  # NEW: Added a separate probability for defects
         "quality_days_delayed": 15,  # NEW: A single delay for any quality issue
         # Cancellation Risk (Bernoulli)
-        "cancellation_probability": 0.3,
+        "cancellation_probability": 0.15,
         "cancellation_days_delayed": 90,
         # --- NEW DISCRETE VARIABLES ---
     },

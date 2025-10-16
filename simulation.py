@@ -9,6 +9,7 @@ from discrete import (
     generate_defective_risk,
     generate_disruption_risk,
     generate_last_minute_cancellation_risk,
+    generate_tariff_escalation,
 )
 from structs import DiscreteRisks, DiscreteRisksParams
 from utils import sample_from_spec
@@ -37,13 +38,13 @@ def factory_costs_with_bayesian_priors(
 
     # Apply yield and tariff
     tariff = risk_params["tariff"]["fixed"]
-    if "fixed" in risk_params["tariff_escal"]:
-        tariff += risk_params["tariff_escal"]["fixed"]
-    # TODO: modify
-    else:
-        tariff += np.random.normal(
-            risk_params["tariff_escal"]["mean"], risk_params["tariff_escal"]["std"]
-        )
+    # if "fixed" in risk_params["tariff_escal"]:
+    #     tariff += risk_params["tariff_escal"]["fixed"]
+    # # TODO: modify
+    # else:
+    #     tariff += np.random.normal(
+    #         risk_params["tariff_escal"]["mean"], risk_params["tariff_escal"]["std"]
+    #     )
     total = base / yield_rate + tariff
 
     return total
@@ -73,6 +74,7 @@ def generate_discrete_risks(params: DiscreteRisksParams) -> DiscreteRisks:
         params.disruption_max,
         params.disruption_days_delayed,
     )
+    tariffs = generate_tariff_escalation(params.tariff_escalation)
 
     return DiscreteRisks(
         disruptions=disruption,
@@ -80,6 +82,7 @@ def generate_discrete_risks(params: DiscreteRisksParams) -> DiscreteRisks:
         damaged=damaged,
         defectives=defective,
         last_minute_cancellations=cancelled,
+        tariff_cost=tariffs,
     )
 
 
@@ -103,9 +106,15 @@ def run_monte_carlo(country: str, params: dict, order_size: int) -> np.ndarray:
     risk_params = create_params_from_dict(params, order_size)
     risk_costs_for_order = []
     lost_units_for_order = []
+    tariff_escalations_for_order = []
 
     for _ in range(MONTE_CARLO_SIMULATIONS):
         risk_scenario = generate_discrete_risks(risk_params)
+
+        tariff_escalation = risk_scenario.tariff_cost
+        # print(tariff_escalation)
+        tariff_escalations_for_order.append(tariff_escalation)
+
         total_risk_cost = (
             risk_scenario.disruptions.cost
             + risk_scenario.border_delays.cost
@@ -126,11 +135,14 @@ def run_monte_carlo(country: str, params: dict, order_size: int) -> np.ndarray:
 
     total_risk_cost_dist = np.array(risk_costs_for_order)
     total_lost_units_dist = np.array(lost_units_for_order)
+    total_tariff_escalation_dist = np.array(tariff_escalations_for_order)
 
     # 3. COMBINE THE DISTRIBUTIONS
     # Add the two arrays element-wise. Each element represents one
     # complete, simulated future (one base cost scenario + one risk scenario).
-    total_order_cost_dist = total_base_cost_dist + total_risk_cost_dist
+    total_order_cost_dist = (
+        total_base_cost_dist * (1 + total_tariff_escalation_dist)
+    ) + total_risk_cost_dist
 
     return {
         "total_cost": total_order_cost_dist,

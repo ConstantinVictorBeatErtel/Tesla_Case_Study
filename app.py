@@ -3,11 +3,12 @@ import copy
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 from config import COUNTRIES
 from simulation import run_monte_carlo
-from utils import optimize_portfolio
+from utils import optimize_without_yield
 
 # --- Streamlit App ---
 st.set_page_config(layout="wide")
@@ -16,314 +17,186 @@ st.write(
     "Assuming we need to deliver a number of headlamps, what is the optimal procurement strategy across US, Mexico, and China?"
 )
 
-order_size = st.number_input(
-    "Number of Headlamps",
-    min_value=1000,
-    max_value=100000,
-    value=10000,
-    step=1000,
+# white background
+# Apply custom CSS for white background
+st.markdown(
+    """
+    <style>
+    .main {
+        background-color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
-# --- Global Simulation Section ---
-if st.button("Run Global Simulation"):
-    with st.spinner("Running simulations for all countries..."):
-        all_results = {
-            country: run_monte_carlo(country, params, order_size)
-            for country, params in COUNTRIES.items()
-        }
 
-        st.subheader("Summary Statistics")
-        cols = st.columns(len(COUNTRIES))
+# initialize session state to hold results (useful later)
+if "optimization_results" not in st.session_state:
+    st.session_state.optimization_results = None
 
-        for i, (country, results) in enumerate(all_results.items()):
-            total_cost_dist = results["total_cost"]
-            lost_units_dist = results["lost_units"]
-            costs_per_lamp = total_cost_dist / order_size
+left_col, right_col = st.columns([1, 2], gap="large")
 
-            with cols[i]:
-                st.markdown(f"### {country}")
+# --- LEFT COLUMN: CONTROLS ---
+with left_col:
+    st.markdown("#### Configuration")
 
-                # METRIC 1: COST PER HEADLAMP (Calculated from total cost)
-                expected_cost_per_lamp = np.mean(costs_per_lamp)
-                st.metric(
-                    label="Expected Cost per Lamp",
-                    value=f"${expected_cost_per_lamp:.2f}",
-                )
-
-                # METRIC 2: RECOMMENDED ORDER SIZE (Calculated from lost units)
-                expected_lost_units = np.mean(lost_units_dist)
-                recommended_order_size = order_size + int(expected_lost_units)
-                st.metric(
-                    label="Recommended Order Size",
-                    value=f"{recommended_order_size:,}",
-                    help=f"To meet a target of {order_size:,}, you should order this many units to account for expected losses of {int(expected_lost_units):,} units.",
-                )
-
-                st.metric(
-                    label="Standard Deviation", value=f"${np.std(costs_per_lamp):.2f}"
-                )
-
-                st.metric(
-                    label="95th Percentile Cost",
-                    value=f"${np.percentile(costs_per_lamp, 95):.2f}",
-                )
-
-        # Create the per-lamp cost dictionary for plotting
-        all_costs_per_lamp = {
-            country: results["total_cost"] / order_size
-            for country, results in all_results.items()
-        }
-
-    # st.markdown("---")  # Visual separator
-
-    # ## 2. SENSITIVITY ANALYSIS
-    # st.subheader("Sensitivity Analysis")
-    # sens_col1, sens_col2 = st.columns([1, 2])
-
-    # with sens_col1:
-    #     st.markdown("#### Configure Analysis")
-    #     country_to_analyze = st.selectbox(
-    #         "Select Country to Analyze:", list(COUNTRIES.keys()), key="sens_country"
-    #     )
-
-    #     # Define parameters that can be tested. You can add more here.
-    #     testable_params = [
-    #         "disruption_lambda",
-    #         "cancellation_probability",
-    #         "damage_probability",
-    #         "raw_mean",  # Example of a factory cost parameter
-    #     ]
-    #     param_to_test = st.selectbox("Select Parameter to Test:", testable_params)
-
-    #     sensitivity_range = st.slider(
-    #         "Select Variation Range (%):",
-    #         min_value=-100,
-    #         max_value=100,
-    #         value=(-50, 50),
-    #         step=10,
-    #     )
-    #     SENSITIVITY_STEPS = 10  # Number of points to calculate in the range
-
-    # with sens_col2:
-    #     with st.spinner(
-    #         f"Running sensitivity analysis on '{param_to_test}' for {country_to_analyze}..."
-    #     ):
-    #         base_params = copy.deepcopy(COUNTRIES[country_to_analyze])
-
-    #         # Find the original value of the parameter
-    #         if param_to_test == "raw_mean":  # Handle nested parameters
-    #             original_value = base_params["raw"]["mean"]
-    #         else:
-    #             original_value = base_params[param_to_test]
-
-    #         param_values = np.linspace(
-    #             original_value * (1 + sensitivity_range[0] / 100),
-    #             original_value * (1 + sensitivity_range[1] / 100),
-    #             SENSITIVITY_STEPS,
-    #         )
-
-    #         expected_costs = []
-    #         for val in param_values:
-    #             temp_params = copy.deepcopy(base_params)
-    #             # Update the parameter in the temporary dictionary
-    #             if param_to_test == "raw_mean":
-    #                 temp_params["raw"]["mean"] = val
-    #             else:
-    #                 temp_params[param_to_test] = val
-
-    #             # Run a smaller simulation for speed
-    #             results = run_monte_carlo(country_to_analyze, temp_params, order_size)
-    #             avg_total_cost = np.mean(results["total_cost"])
-    #             expected_costs.append(avg_total_cost / order_size)
-
-    #         df_sens = pd.DataFrame(
-    #             {
-    #                 "Parameter Value": param_values,
-    #                 "Expected Cost per Lamp": expected_costs,
-    #             }
-    #         )
-
-    #         fig_sens = px.line(
-    #             df_sens,
-    #             x="Parameter Value",
-    #             y="Expected Cost per Lamp",
-    #             title=f"Impact of '{param_to_test}' on Cost in {country_to_analyze}",
-    #             markers=True,
-    #         )
-    #         fig_sens.update_layout(
-    #             xaxis_title=f"Value of {param_to_test}",
-    #             yaxis_title="Expected Cost ($/Lamp)",
-    #         )
-    #         st.plotly_chart(fig_sens, use_container_width=True)
-    #         st.caption(
-    #             "This chart shows how the final expected cost changes as a single input parameter is varied. A steep slope indicates the model is highly sensitive to that parameter."
-    #         )
-
-    # # --- END: NEW SECTIONS ---
-
-    # st.markdown("---")
-
-
-st.markdown("---")
-
-# --- Portfolio Optimization UI ---
-st.header("Portfolio Optimization (Mean-Variance)")
-st.write(
-    "Find the optimal sourcing allocation that minimizes: **E[Cost] + λ × SD[Cost]**"
-)
-st.write(
-    "This balances expected cost against risk (volatility). Higher λ means you care more about reducing risk."
-)
-
-opt_col1, opt_col2 = st.columns([1, 2])
-with opt_col1:
-    st.subheader("Optimization Settings")
-
-    lambda_risk = st.slider(
-        "Risk Aversion (λ)",
-        min_value=0.0,
-        max_value=5.0,
-        value=1.0,
-        step=0.1,
-        help="λ=0: minimize expected cost only. Higher λ: care more about reducing risk.",
+    # Renamed from 'target_order_size' to 'target_order_size' for clarity
+    target_order_size = st.slider(
+        "Anticipated Order Size",
+        min_value=1_000,
+        max_value=50_000,
+        value=8_000,
+        step=500,
+        help="The target number of usable headlamps you want to receive.",
     )
 
-    st.markdown("##### Optional Constraints")
-    add_constraints = st.checkbox("Add min/max allocation constraints")
+    risk_tolerance = st.slider(
+        "Risk Aversion (Lambda)",
+        min_value=0.0,
+        max_value=5.0,
+        value=5.0,
+        step=0.1,
+        help="A higher value means you prioritize a more predictable (less risky) cost over the absolute lowest cost.",
+    )
 
-    constraints = {}
-    if add_constraints:
-        for country in COUNTRIES.keys():
-            col_a, col_b = st.columns(2)
-            with col_a:
-                min_val = st.number_input(
-                    f"{country} Min %", 0, 100, 0, 5, key=f"min_{country}"
-                )
-            with col_b:
-                max_val = st.number_input(
-                    f"{country} Max %", 0, 100, 100, 5, key=f"max_{country}"
-                )
-            constraints[country] = (min_val / 100, max_val / 100)
+    run_button = st.button("Run", type="primary", use_container_width=True)
 
-    run_optimization = st.button("🎯 Run Optimization", type="primary")
-
-if run_optimization:
-    with st.spinner("Running optimization..."):
-        # STEP 1: Run simulations to get BOTH costs and lost units
+# --- PROCESSING LOGIC ---
+if run_button:
+    with st.spinner("Running simulations for all countries..."):
+        # 1. run monte carlo simulation
         all_results = {
-            country: run_monte_carlo(country, params, order_size)
+            country: run_monte_carlo(country, params, target_order_size)
             for country, params in COUNTRIES.items()
         }
-
-        # A) Separate the results for clarity
         all_costs = {
             country: results["total_cost"] for country, results in all_results.items()
         }
         all_lost_units = {
             country: results["lost_units"] for country, results in all_results.items()
         }
-        # Create the per-unit cost dictionary specifically for the optimizer
+        # create the per-unit cost dictionary specifically for the optimizer
         all_costs_per_lamp = {
-            country: total_costs / order_size
+            country: total_costs / target_order_size
             for country, total_costs in all_costs.items()
         }
 
-        # B) CALCULATE EXPECTED YIELD FOR EACH COUNTRY
-        # Yield = (units ordered - expected lost units) / units ordered
-        expected_yields = {}
-        for country, results in all_results.items():
-            expected_lost_units = np.mean(results["lost_units"])
-            yield_rate = (order_size - expected_lost_units) / order_size
-            expected_yields[country] = yield_rate
-
-        # STEP 2: Run the financial optimization (this part is unchanged)
-        opt_constraints = constraints if add_constraints else None
-        result = optimize_portfolio(
-            all_costs_per_lamp, expected_yields, lambda_risk, opt_constraints
-        )
+        # 2. run the optimization
+        result = optimize_without_yield(all_costs_per_lamp, risk_tolerance, None)
 
         if result:
-            with opt_col2:
-                st.subheader("Optimal Portfolio Performance")
+            # 3. calculate portfolio-level metrics
+            allocations = result["allocations"]
 
-                # --- NEW: Calculate and Display Expected Units Received ---
-
-                # Calculate the expected number of lost units for each country
-                expected_losses = {
-                    country: np.mean(units) for country, units in all_lost_units.items()
-                }
-
-                # Get the optimal allocation weights from the optimizer
-                allocations = result["allocations"]
-
-                # Calculate the weighted average of lost units for the entire portfolio
-                portfolio_expected_lost_units = sum(
-                    expected_losses[country] * allocations[country]
-                    for country in COUNTRIES.keys()
-                )
-
-                # Calculate the final number of units you expect to receive
-                expected_units_received = order_size - portfolio_expected_lost_units
-
-                # Display the new metrics
-                st.metric(label="Initial Order Size", value=f"{order_size:,}")
-                st.metric(
-                    label="Expected Units Received",
-                    value=f"{int(expected_units_received):,}",
-                    help=f"Based on the optimal mix, you can expect to lose {int(portfolio_expected_lost_units):,} units to various risks.",
-                )
-
-                portfolio_yield = (expected_units_received / order_size) * 100
-                st.metric(label="Portfolio Yield", value=f"{portfolio_yield:.2f}%")
-
-                st.markdown("---")  # Visual separator
-
-                # --- The rest of your existing display code ---
-                st.markdown("##### Financial Outcome")
-                st.metric("Expected Cost per Unit", f"${result['expected_cost']:.2f}")
-                st.metric("Standard Deviation per Unit", f"${result['std_cost']:.2f}")
-
-                st.markdown("##### Optimal Allocations")
-
-                alloc_df = pd.DataFrame(
-                    [
-                        {
-                            "Country": country,
-                            "Allocation": f"{weight * 100:.1f}%",
-                            "Weight": weight,
-                        }
-                        for country, weight in result["allocations"].items()
-                    ]
-                ).sort_values("Weight", ascending=False)
-                st.dataframe(alloc_df[["Country", "Allocation"]], hide_index=True)
-
-                # Pie chart of allocations
-                fig_pie = px.pie(
-                    alloc_df,
-                    values="Weight",
-                    names="Country",
-                    title="Optimal Allocation Mix",
-                )
-                st.plotly_chart(fig_pie, use_container_width=True)
-        else:
-            st.error(
-                "Optimization failed. Try relaxing constraints or adjusting parameters."
+            # calculate weighted average of expected lost units
+            portfolio_expected_lost_units = sum(
+                np.mean(all_results[country]["lost_units"]) * allocations[country]
+                for country in COUNTRIES.keys()
             )
 
+            # calculate portfolio's overall yield rate (units received) / (units ordered)
+            portfolio_yield_rate = (
+                target_order_size - portfolio_expected_lost_units
+            ) / target_order_size
+
+            # calculate the recommended order size to meet the target
+            if portfolio_yield_rate > 0:
+                recommended_orders = int(target_order_size / portfolio_yield_rate)
+            else:  # GUARD: division by 0
+                recommended_orders = float("inf")
+
+            # prepare allocation data for the pie chart
+            alloc_df = pd.DataFrame(
+                [
+                    {"Country": country, "Weight": weight}
+                    for country, weight in allocations.items()
+                ]
+            ).sort_values("Weight", ascending=False)
+
+            # 4. store all results in session state for display
+            st.session_state.optimization_results = {
+                "blended_cost": result["expected_cost"],
+                "recommended_orders": recommended_orders,
+                "alloc_df": alloc_df,
+            }
+        else:
+            st.error("Optimization failed. Please check parameters and try again.")
+            st.session_state.optimization_results = None
+
+
+# --- RIGHT COLUMN: OUTPUTS ---
+with right_col:
+    # Display results if they exist in the session state
+    if st.session_state.optimization_results:
+        results = st.session_state.optimization_results
+
+        # Create columns for the metrics
+        metric_col1, metric_col2 = st.columns(2)
+
+        with metric_col1:
+            st.metric(
+                label="Cost / Headlamp",
+                value=f"${results['blended_cost']:.2f}",
+                help="The expected cost per usable headlamp from the optimized blend of suppliers.",
+            )
+
+        with metric_col2:
+            st.metric(
+                label="Recommended Orders",
+                value=f"{results['recommended_orders']:,}",
+                help=f"To meet your target of {target_order_size:,} usable units, you should place a total order of this size.",
+            )
+
+        # Create and display the pie chart
+        fig_pie = px.pie(
+            results["alloc_df"],
+            values="Weight",
+            names="Country",
+            hole=0.3,
+            width=250,
+            height=250,
+        )
+
+        # Update chart appearance to match wireframe
+        fig_pie.update_traces(
+            textinfo="percent+label",
+            textposition="inside",
+            pull=[0.05, 0, 0],  # Slightly pull out the largest slice
+        )
+        fig_pie.update_layout(
+            title_text="",  # No title on the chart itself
+            showlegend=False,
+            margin=dict(t=0, b=0, l=0, r=0),  # Reduce whitespace
+        )
+
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    else:
+        # Show a placeholder message before the first run
+        st.info(
+            "Adjust the parameters on the left and click **Run** to see the optimal supplier mix."
+        )
+
+# --- SENSITIVITY ANALYSIS SECTION ---
 st.markdown("---")
+st.header("Sensitivity Analysis")
+st.write(
+    "Analyze which parameters have the biggest impact on the total cost for a specific country. "
+    "This chart shows how a +/- 20% change in each input variable affects the expected total cost."
+)
 
 
-# --- Sensitivity Analysis Function ---
-def run_sensitivity_analysis(base_params, factors_to_test, n_runs, swing=0.20):
+def run_sensitivity_analysis(country, base_params, factors_to_test, order_size, swing=0.20):
     """
     Runs a one-at-a-time sensitivity analysis for a given set of factors.
+    Returns a dataframe with the results and the baseline mean cost.
     """
     results = []
 
     # Calculate baseline mean cost
-    # base_costs = simulate_country(base_params, n_runs)
-    base_costs = run_monte_carlo(base_params, n_runs)
-    baseline_mean = np.mean(base_costs)
+    base_results = run_monte_carlo(country, base_params, order_size)
+    baseline_mean = np.mean(base_results["total_cost"])
 
     for factor_name, param_path in factors_to_test:
         params_low = copy.deepcopy(base_params)
@@ -333,6 +206,10 @@ def run_sensitivity_analysis(base_params, factors_to_test, n_runs, swing=0.20):
         base_value = base_params
         for key in param_path:
             base_value = base_value[key]
+
+        # Skip parameters that are 0 (can't do ±20% of 0)
+        if base_value == 0:
+            continue
 
         low_value = base_value * (1 - swing)
         high_value = base_value * (1 + swing)
@@ -348,18 +225,161 @@ def run_sensitivity_analysis(base_params, factors_to_test, n_runs, swing=0.20):
                 temp_low = temp_low[key]
                 temp_high = temp_high[key]
 
-        # Simulate with low and high values
-        # mean_low = np.mean(simulate_country(params_low, n_runs))
-        mean_low = np.mean(run_monte_carlo(params_low, n_runs))
-        mean_high = np.mean(run_monte_carlo(params_high, n_runs))
+        try:
+            # Simulate with low and high values
+            low_results = run_monte_carlo(country, params_low, order_size)
+            high_results = run_monte_carlo(country, params_high, order_size)
 
-        results.append(
-            {
-                "Factor": factor_name,
-                "Low Cost": mean_low,
-                "High Cost": mean_high,
-                "Impact": mean_high - mean_low,
-            }
-        )
+            mean_low = np.mean(low_results["total_cost"])
+            mean_high = np.mean(high_results["total_cost"])
+
+            results.append({
+                'Factor': factor_name,
+                'Low Cost': mean_low,
+                'High Cost': mean_high,
+                'Impact': mean_high - mean_low
+            })
+        except Exception as e:
+            # Skip factors that cause errors (e.g., invalid parameter combinations)
+            st.warning(f"Skipping {factor_name}: {str(e)}")
+            continue
 
     return pd.DataFrame(results), baseline_mean
+
+
+sa_col1, sa_col2 = st.columns([1, 3])
+
+with sa_col1:
+    sa_country = st.selectbox("Select Country to Analyze", list(COUNTRIES.keys()), key="sa_country")
+    sa_order_size = st.number_input(
+        "Order Size for Analysis",
+        min_value=1_000,
+        max_value=50_000,
+        value=8_000,
+        step=500,
+        key="sa_order_size"
+    )
+    run_sa = st.button("Run Sensitivity Analysis")
+
+if run_sa:
+    with st.spinner(f"Running sensitivity analysis for {sa_country}..."):
+        base_params = COUNTRIES[sa_country]
+
+        # Define factors to test for each country
+        factors = {
+            'US': [
+                ('Raw Material Mean', ('raw', 'mean')),
+                ('Raw Material Std', ('raw', 'std')),
+                ('Labor Mean', ('labor', 'mean')),
+                ('Labor Std', ('labor', 'std')),
+                ('Indirect Shape', ('indirect', 'shape')),
+                ('Indirect Scale', ('indirect', 'scale')),
+                ('Logistics Mean', ('logistics', 'mean')),
+                ('Depreciation Mean', ('depreciation', 'mean')),
+                ('Depreciation Std', ('depreciation', 'std')),
+                ('Working Capital Mean', ('working_capital', 'mean')),
+                ('Working Capital Std', ('working_capital', 'std')),
+                ('Manufacturing Yield (a)', ('yield_params', 'a')),
+                ('Manufacturing Yield (b)', ('yield_params', 'b')),
+                ('Disruption Lambda', ('disruption_lambda',)),
+                ('Disruption Min Impact', ('disruption_min_impact',)),
+                ('Disruption Max Impact', ('disruption_max_impact',)),
+                ('Disruption Days Delayed', ('disruption_days_delayed',)),
+                ('Damage Probability', ('damage_probability',)),
+                ('Quality Days Delayed', ('quality_days_delayed',)),
+            ],
+            'Mexico': [
+                ('Raw Material Mean', ('raw', 'mean')),
+                ('Raw Material Std', ('raw', 'std')),
+                ('Labor Mean', ('labor', 'mean')),
+                ('Labor Std', ('labor', 'std')),
+                ('Indirect Shape', ('indirect', 'shape')),
+                ('Indirect Scale', ('indirect', 'scale')),
+                ('Logistics Mean', ('logistics', 'mean')),
+                ('Logistics Std', ('logistics', 'std')),
+                ('Depreciation Mean', ('depreciation', 'mean')),
+                ('Depreciation Std', ('depreciation', 'std')),
+                ('Working Capital Mean', ('working_capital', 'mean')),
+                ('Working Capital Std', ('working_capital', 'std')),
+                ('Manufacturing Yield (a)', ('yield_params', 'a')),
+                ('Manufacturing Yield (b)', ('yield_params', 'b')),
+                ('Tariff (Fixed)', ('tariff', 'fixed')),
+                ('Tariff Escalation', ('tariff_escal',)),
+                ('Currency Volatility', ('currency_std',)),
+                ('Disruption Lambda', ('disruption_lambda',)),
+                ('Disruption Min Impact', ('disruption_min_impact',)),
+                ('Disruption Max Impact', ('disruption_max_impact',)),
+                ('Disruption Days Delayed', ('disruption_days_delayed',)),
+                ('Border Delay Lambda', ('border_delay_lambda',)),
+                ('Border Min Impact', ('border_min_impact',)),
+                ('Border Max Impact', ('border_max_impact',)),
+                ('Border Days Delayed', ('border_days_delayed',)),
+                ('Damage Probability', ('damage_probability',)),
+                ('Defective Probability', ('defective_probability',)),
+                ('Quality Days Delayed', ('quality_days_delayed',)),
+            ],
+            'China': [
+                ('Raw Material Mean', ('raw', 'mean')),
+                ('Raw Material Std', ('raw', 'std')),
+                ('Labor Mean', ('labor', 'mean')),
+                ('Labor Std', ('labor', 'std')),
+                ('Indirect Shape', ('indirect', 'shape')),
+                ('Indirect Scale', ('indirect', 'scale')),
+                ('Logistics Mean', ('logistics', 'mean')),
+                ('Logistics Std', ('logistics', 'std')),
+                ('Depreciation Mean', ('depreciation', 'mean')),
+                ('Depreciation Std', ('depreciation', 'std')),
+                ('Working Capital Mean', ('working_capital', 'mean')),
+                ('Working Capital Std', ('working_capital', 'std')),
+                ('Manufacturing Yield (a)', ('yield_params', 'a')),
+                ('Manufacturing Yield (b)', ('yield_params', 'b')),
+                ('Tariff (Fixed)', ('tariff', 'fixed')),
+                ('Tariff Escalation', ('tariff_escal',)),
+                ('Currency Volatility', ('currency_std',)),
+                ('Disruption Lambda', ('disruption_lambda',)),
+                ('Disruption Min Impact', ('disruption_min_impact',)),
+                ('Disruption Max Impact', ('disruption_max_impact',)),
+                ('Disruption Days Delayed', ('disruption_days_delayed',)),
+                ('Damage Probability', ('damage_probability',)),
+                ('Quality Days Delayed', ('quality_days_delayed',)),
+                ('Cancellation Probability', ('cancellation_probability',)),
+                ('Cancellation Days Delayed', ('cancellation_days_delayed',)),
+            ]
+        }
+
+        factors_to_test = factors[sa_country]
+        sa_results, baseline_mean = run_sensitivity_analysis(
+            sa_country, base_params, factors_to_test, sa_order_size
+        )
+
+        sa_results = sa_results.sort_values(by='Impact', ascending=True)
+
+        # Create Tornado Plot
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            y=sa_results['Factor'],
+            x=sa_results['High Cost'] - baseline_mean,
+            name='High Estimate (Input +20%)',
+            orientation='h',
+            marker_color='indianred'
+        ))
+        fig.add_trace(go.Bar(
+            y=sa_results['Factor'],
+            x=sa_results['Low Cost'] - baseline_mean,
+            name='Low Estimate (Input -20%)',
+            orientation='h',
+            marker_color='lightblue'
+        ))
+
+        fig.update_layout(
+            title=f'Tornado Plot for {sa_country} (Baseline Cost: ${baseline_mean:,.2f})',
+            xaxis_title='Impact on Total Cost ($)',
+            yaxis_title='Sensitivity Factor',
+            barmode='relative',
+            yaxis_autorange='reversed',
+            legend=dict(x=0.01, y=0.01, traceorder='normal'),
+            margin=dict(l=200)  # Add left margin for long factor names
+        )
+
+        with sa_col2:
+            st.plotly_chart(fig, use_container_width=True)
