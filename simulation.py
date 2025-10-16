@@ -45,7 +45,7 @@ def factory_costs_with_bayesian_priors(
     #     tariff += np.random.normal(
     #         risk_params["tariff_escal"]["mean"], risk_params["tariff_escal"]["std"]
     #     )
-    total = base / yield_rate + tariff
+    total = base / yield_rate * (1+tariff)
 
     return total
 
