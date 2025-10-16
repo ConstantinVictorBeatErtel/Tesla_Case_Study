@@ -203,8 +203,8 @@ with right_col:
                     )
                 fig_h.update_layout(
                     barmode="overlay",
-                    title="Overlaid Histograms of Total Cost",
-                    xaxis_title="Total Cost ($/lamp)",
+                    title="Monte Carlo Simulation Results",
+                    xaxis_title="Total Cost",
                     yaxis_title="Frequency",
                 )
                 st.plotly_chart(fig_h, use_container_width=True)

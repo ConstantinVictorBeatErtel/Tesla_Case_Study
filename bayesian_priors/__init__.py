@@ -20,7 +20,7 @@ WHAT THIS DOES:
 
 VARIABLES WE ARE DOING THIS FOR (with real data):
 - [x] raw material (PPI data → Student-t samples)
-- [ ] labor 
+- [ ] labor
 - [ ] logistics
 - [x] fx (FRED exchange rates → Student-t samples)
 - [x] yield (uncertainty-adjusted Beta)
@@ -31,9 +31,9 @@ VARIABLES WE ARE DOING THIS FOR (with real data):
 
 USAGE:
     from bayesian_priors import create_bayesian_simulator
-    
+
     bayesian_sims = create_bayesian_simulator(countries)
-    
+
     # Use instead of simulate_country()
     us_costs = bayesian_sims['US'](n_runs=10000)
 """
@@ -126,4 +126,3 @@ if __name__ == "__main__":
     print(f"  Mean: ${costs.mean():.2f}")
     print(f"  Std:  ${costs.std():.2f}")
     print(f"  95th: ${np.percentile(costs, 95):.2f}")
-

@@ -67,7 +67,10 @@ def build_samplers_for_country(country: str, baseline_params: Dict) -> CountrySa
     # Labor (no good public data - use baseline)
     labor_mean = baseline_params["labor"]["mean"]
     labor_std = baseline_params["labor"]["std"]
-    labor_sampler = lambda n: np.random.normal(labor_mean, labor_std, n)
+
+    def labor_sampler(n):
+        return np.random.normal(labor_mean, labor_std, n)
+
     print(f"  → Labor: Baseline Normal({labor_mean}, {labor_std})")
 
     # Logistics (special handling for China lognormal)
@@ -76,12 +79,18 @@ def build_samplers_for_country(country: str, baseline_params: Dict) -> CountrySa
         log_std = baseline_params["logistics"]["std"]
         sigma = np.sqrt(np.log(1 + (log_std**2 / log_mean**2)))
         mu = np.log(log_mean) - (sigma**2 / 2)
-        logistics_sampler = lambda n: np.random.lognormal(mu, sigma, n)
+
+        def logistics_sampler(n):
+            return np.random.lognormal(mu, sigma, n)
+
         print("  → Logistics: Lognormal (high volatility from case study)")
     else:
         log_mean = baseline_params["logistics"]["mean"]
         log_std = baseline_params["logistics"]["std"]
-        logistics_sampler = lambda n: np.random.normal(log_mean, log_std, n)
+
+        def logistics_sampler(n):
+            return np.random.normal(log_mean, log_std, n)
+
         print(f"  → Logistics: Normal({log_mean}, {log_std})")
 
     # FX volatility

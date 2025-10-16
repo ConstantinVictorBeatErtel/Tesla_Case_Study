@@ -78,4 +78,3 @@ def simulate_with_bayesian_priors(
     )
 
     return total
-

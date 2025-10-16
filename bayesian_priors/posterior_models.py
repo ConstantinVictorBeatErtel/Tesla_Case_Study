@@ -23,16 +23,16 @@ from scipy.stats import t
 class NormalPosterior:
     """
     Captures uncertainty about a Normal distribution's mean & variance from limited data.
-    
+
     WHY NOT JUST USE SAMPLE MEAN/STD?
     With only 24 months of data, you can't be certain those ARE the true parameters.
     This class accounts for that uncertainty.
-    
+
     HOW IT WORKS:
     - Uses Normal-Inverse-Gamma prior (models mean & variance uncertainty together)
     - Conjugate prior = closed-form math updates (fast, stable)
     - Gives Student-t predictive distribution (fatter tails than Normal for small data)
-    
+
     PARAMETERS:
     - mu, kappa: Best guess for mean, and confidence in that guess
     - alpha, beta: Control uncertainty about the variance
@@ -145,4 +145,3 @@ def fit_beta_from_rates(
     successes = int(round(mean_rate * n))
 
     return fit_beta_posterior(successes, n, prior_alpha, prior_beta)
-

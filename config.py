@@ -9,6 +9,61 @@ EXPEDITED_SHIPPING_COST_PER_HEADLAMP = 50.71
 FED_FUNDS_RATE = get_most_recent_fed_funds_rate()
 
 COUNTRIES = {
+    "China": {
+        "raw": {"dist": "normal", "mean": 30, "std": 3},
+        "labor": {
+            "dist": "lognormal",
+            "mean": 1.379,
+            "std": 0.120,
+        },  # mean ~4, std ~0.5
+        "indirect": {"dist": "gamma", "shape": 16.0, "scale": 0.25},  # mean 4, std 1
+        "logistics": {
+            "dist": "lognormal",
+            "mean": 12,
+            "std": 8,
+        },  # High volatility from trade disruptions
+        "electricity": {"dist": "triangular", "min": 3.60, "mode": 4.00, "max": 4.40},
+        "depreciation": {"dist": "normal", "mean": 5, "std": 0.25},
+        "working_capital": {"dist": "normal", "mean": 10, "std": 1},
+        "yield_params": {
+            "dist": "beta",
+            "a": 49,
+            "b": 3,
+        },  # Approx for mean 0.95, std 0.03
+        "tariff": {"fixed": 0.25},
+        "tariff_escal": 0.15,
+        "currency_std": 0.03,
+        # "disruption_prob": 0.2,
+        # "disruption_impact": 10,
+        # "border_mean": 0,
+        # "border_std": 0,
+        # "border_threshold": 2,
+        # "border_cost_per_hr": 10,
+        # "damage_prob": 0.02,
+        # "damage_impact": 20,
+        # "skills_mean": 0,
+        # "skills_std": 0,
+        # "cancellation_prob": 0.3,  # Updated from recent shipping data (30% cancellations)
+        # "cancellation_impact": 50,
+        # --- NEW DISCRETE VARIABLES ---
+        "disruption_lambda": 0.15,  # NEW: Avg 0.2 disruptive events per shipment
+        "disruption_min_impact": 100,
+        "disruption_max_impact": 1000,
+        "disruption_days_delayed": 10,
+        # Border Delay Risks are impossible for China
+        "border_delay_lambda": 0,
+        "border_min_impact": 100,
+        "border_max_impact": 1000,
+        "border_days_delayed": 0,
+        # Quality Risks (Binomial)
+        "damage_probability": 0.02,
+        "defective_probability": 0,  # NEW: Added a separate probability for defects
+        "quality_days_delayed": 15,  # NEW: A single delay for any quality issue
+        # Cancellation Risk (Bernoulli)
+        "cancellation_probability": 0.15,
+        "cancellation_days_delayed": 90,
+        # --- NEW DISCRETE VARIABLES ---
+    },
     "US": {
         # Continuous variables: these are the parameters for each plant
         "raw": {"dist": "normal", "mean": 40, "std": 4},
@@ -111,61 +166,6 @@ COUNTRIES = {
         "quality_days_delayed": 5,  # NEW: A single delay for any quality issue
         # Cancellation Risk (Bernoulli)
         "cancellation_probability": 0.0001,
-        "cancellation_days_delayed": 90,
-        # --- NEW DISCRETE VARIABLES ---
-    },
-    "China": {
-        "raw": {"dist": "normal", "mean": 30, "std": 3},
-        "labor": {
-            "dist": "lognormal",
-            "mean": 1.379,
-            "std": 0.120,
-        },  # mean ~4, std ~0.5
-        "indirect": {"dist": "gamma", "shape": 16.0, "scale": 0.25},  # mean 4, std 1
-        "logistics": {
-            "dist": "lognormal",
-            "mean": 12,
-            "std": 8,
-        },  # High volatility from trade disruptions
-        "electricity": {"dist": "triangular", "min": 3.60, "mode": 4.00, "max": 4.40},
-        "depreciation": {"dist": "normal", "mean": 5, "std": 0.25},
-        "working_capital": {"dist": "normal", "mean": 10, "std": 1},
-        "yield_params": {
-            "dist": "beta",
-            "a": 49,
-            "b": 3,
-        },  # Approx for mean 0.95, std 0.03
-        "tariff": {"fixed": 0.25},
-        "tariff_escal": 0.15,
-        "currency_std": 0.03,
-        # "disruption_prob": 0.2,
-        # "disruption_impact": 10,
-        # "border_mean": 0,
-        # "border_std": 0,
-        # "border_threshold": 2,
-        # "border_cost_per_hr": 10,
-        # "damage_prob": 0.02,
-        # "damage_impact": 20,
-        # "skills_mean": 0,
-        # "skills_std": 0,
-        # "cancellation_prob": 0.3,  # Updated from recent shipping data (30% cancellations)
-        # "cancellation_impact": 50,
-        # --- NEW DISCRETE VARIABLES ---
-        "disruption_lambda": 0.15,  # NEW: Avg 0.2 disruptive events per shipment
-        "disruption_min_impact": 100,
-        "disruption_max_impact": 1000,
-        "disruption_days_delayed": 10,
-        # Border Delay Risks are impossible for China
-        "border_delay_lambda": 0,
-        "border_min_impact": 100,
-        "border_max_impact": 1000,
-        "border_days_delayed": 0,
-        # Quality Risks (Binomial)
-        "damage_probability": 0.02,
-        "defective_probability": 0,  # NEW: Added a separate probability for defects
-        "quality_days_delayed": 15,  # NEW: A single delay for any quality issue
-        # Cancellation Risk (Bernoulli)
-        "cancellation_probability": 0.15,
         "cancellation_days_delayed": 90,
         # --- NEW DISCRETE VARIABLES ---
     },
