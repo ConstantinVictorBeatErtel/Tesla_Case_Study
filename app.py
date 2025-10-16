@@ -119,6 +119,7 @@ if run_button:
                 "blended_cost": result["expected_cost"],
                 "recommended_orders": recommended_orders,
                 "alloc_df": alloc_df,
+                "all_costs": all_costs,
             }
         else:
             st.error("Optimization failed. Please check parameters and try again.")
@@ -148,29 +149,67 @@ with right_col:
                 help=f"To meet your target of {target_order_size:,} usable units, you should place a total order of this size.",
             )
 
-        # Create and display the pie chart
-        fig_pie = px.pie(
-            results["alloc_df"],
-            values="Weight",
-            names="Country",
-            hole=0.3,
-            width=250,
-            height=250,
-        )
+        # Create tabs for different visualizations
+        tab1, tab2 = st.tabs(["Supplier Allocation", "Monte Carlo Cost Distribution"])
 
-        # Update chart appearance to match wireframe
-        fig_pie.update_traces(
-            textinfo="percent+label",
-            textposition="inside",
-            pull=[0.05, 0, 0],  # Slightly pull out the largest slice
-        )
-        fig_pie.update_layout(
-            title_text="",  # No title on the chart itself
-            showlegend=False,
-            margin=dict(t=0, b=0, l=0, r=0),  # Reduce whitespace
-        )
+        with tab1:
+            # Create and display the pie chart
+            fig_pie = px.pie(
+                results["alloc_df"],
+                values="Weight",
+                names="Country",
+                hole=0.3,
+                width=250,
+                height=250,
+            )
 
-        st.plotly_chart(fig_pie, use_container_width=True)
+            # Update chart appearance to match wireframe
+            fig_pie.update_traces(
+                textinfo="percent+label",
+                textposition="inside",
+                pull=[0.05, 0, 0],  # Slightly pull out the largest slice
+            )
+            fig_pie.update_layout(
+                title_text="",  # No title on the chart itself
+                showlegend=False,
+                margin=dict(t=0, b=0, l=0, r=0),  # Reduce whitespace
+            )
+
+            st.plotly_chart(fig_pie, use_container_width=True)
+
+        with tab2:
+            # Histogram overlay - using the logic from histogram.py
+            all_costs = results.get("all_costs", {})
+            if all_costs:
+                fig_h = go.Figure()
+
+                # Define country colors
+                country_colors = {
+                    "US": "darkblue",
+                    "Mexico": "lightblue",
+                    "China": "lightcoral",
+                }
+
+                for country, costs in all_costs.items():
+                    color = country_colors.get(country, "gray")
+                    fig_h.add_trace(
+                        go.Histogram(
+                            x=costs,
+                            name=country,
+                            opacity=0.55,
+                            nbinsx=60,
+                            marker_color=color,
+                        )
+                    )
+                fig_h.update_layout(
+                    barmode="overlay",
+                    title="Overlaid Histograms of Total Cost",
+                    xaxis_title="Total Cost ($/lamp)",
+                    yaxis_title="Frequency",
+                )
+                st.plotly_chart(fig_h, use_container_width=True)
+            else:
+                st.info("Run the simulation to see cost distribution histograms.")
 
     else:
         # Show a placeholder message before the first run
@@ -187,7 +226,9 @@ st.write(
 )
 
 
-def run_sensitivity_analysis(country, base_params, factors_to_test, order_size, swing=0.20):
+def run_sensitivity_analysis(
+    country, base_params, factors_to_test, order_size, swing=0.20
+):
     """
     Runs a one-at-a-time sensitivity analysis for a given set of factors.
     Returns a dataframe with the results and the baseline mean cost.
@@ -233,12 +274,14 @@ def run_sensitivity_analysis(country, base_params, factors_to_test, order_size, 
             mean_low = np.mean(low_results["total_cost"])
             mean_high = np.mean(high_results["total_cost"])
 
-            results.append({
-                'Factor': factor_name,
-                'Low Cost': mean_low,
-                'High Cost': mean_high,
-                'Impact': mean_high - mean_low
-            })
+            results.append(
+                {
+                    "Factor": factor_name,
+                    "Low Cost": mean_low,
+                    "High Cost": mean_high,
+                    "Impact": mean_high - mean_low,
+                }
+            )
         except Exception as e:
             # Skip factors that cause errors (e.g., invalid parameter combinations)
             st.warning(f"Skipping {factor_name}: {str(e)}")
@@ -250,14 +293,16 @@ def run_sensitivity_analysis(country, base_params, factors_to_test, order_size, 
 sa_col1, sa_col2 = st.columns([1, 3])
 
 with sa_col1:
-    sa_country = st.selectbox("Select Country to Analyze", list(COUNTRIES.keys()), key="sa_country")
+    sa_country = st.selectbox(
+        "Select Country to Analyze", list(COUNTRIES.keys()), key="sa_country"
+    )
     sa_order_size = st.number_input(
         "Order Size for Analysis",
         min_value=1_000,
         max_value=50_000,
         value=8_000,
         step=500,
-        key="sa_order_size"
+        key="sa_order_size",
     )
     run_sa = st.button("Run Sensitivity Analysis")
 
@@ -267,10 +312,10 @@ if run_sa:
 
         # Define factors to test for each country
         factors = {
-            'US': [
-                ('Raw Material Mean', ('raw', 'mean')),
+            "US": [
+                ("Raw Material Mean", ("raw", "mean")),
                 # ('Raw Material Std', ('raw', 'std')),
-                ('Labor Mean', ('labor', 'mean')),
+                ("Labor Mean", ("labor", "mean")),
                 # ('Labor Std', ('labor', 'std')),
                 # ('Indirect Shape', ('indirect', 'shape')),
                 # ('Indirect Scale', ('indirect', 'scale')),
@@ -281,17 +326,17 @@ if run_sa:
                 # ('Working Capital Std', ('working_capital', 'std')),
                 # ('Manufacturing Yield (a)', ('yield_params', 'a')),
                 # ('Manufacturing Yield (b)', ('yield_params', 'b')),
-                ('Disruption Lambda', ('disruption_lambda',)),
+                ("Disruption Lambda", ("disruption_lambda",)),
                 # ('Disruption Min Impact', ('disruption_min_impact',)),
                 # ('Disruption Max Impact', ('disruption_max_impact',)),
-                ('Disruption Days Delayed', ('disruption_days_delayed',)),
-                ('Damage Probability', ('damage_probability',)),
-                ('Quality Days Delayed', ('quality_days_delayed',)),
+                ("Disruption Days Delayed", ("disruption_days_delayed",)),
+                ("Damage Probability", ("damage_probability",)),
+                ("Quality Days Delayed", ("quality_days_delayed",)),
             ],
-            'Mexico': [
-                ('Raw Material Mean', ('raw', 'mean')),
+            "Mexico": [
+                ("Raw Material Mean", ("raw", "mean")),
                 # ('Raw Material Std', ('raw', 'std')),
-                ('Labor Mean', ('labor', 'mean')),
+                ("Labor Mean", ("labor", "mean")),
                 # ('Labor Std', ('labor', 'std')),
                 # ('Indirect Shape', ('indirect', 'shape')),
                 # ('Indirect Scale', ('indirect', 'scale')),
@@ -303,25 +348,25 @@ if run_sa:
                 # ('Working Capital Std', ('working_capital', 'std')),
                 # ('Manufacturing Yield (a)', ('yield_params', 'a')),
                 # ('Manufacturing Yield (b)', ('yield_params', 'b')),
-                ('Tariff (Fixed)', ('tariff', 'fixed')),
-                ('Tariff Escalation', ('tariff_escal',)),
-                ('Currency Volatility', ('currency_std',)),
-                ('Disruption Lambda', ('disruption_lambda',)),
+                ("Tariff (Fixed)", ("tariff", "fixed")),
+                ("Tariff Escalation", ("tariff_escal",)),
+                ("Currency Volatility", ("currency_std",)),
+                ("Disruption Lambda", ("disruption_lambda",)),
                 # ('Disruption Min Impact', ('disruption_min_impact',)),
                 # ('Disruption Max Impact', ('disruption_max_impact',)),
-                ('Disruption Days Delayed', ('disruption_days_delayed',)),
-                ('Border Delay Lambda', ('border_delay_lambda',)),
+                ("Disruption Days Delayed", ("disruption_days_delayed",)),
+                ("Border Delay Lambda", ("border_delay_lambda",)),
                 # ('Border Min Impact', ('border_min_impact',)),
                 # ('Border Max Impact', ('border_max_impact',)),
-                ('Border Days Delayed', ('border_days_delayed',)),
-                ('Damage Probability', ('damage_probability',)),
-                ('Defective Probability', ('defective_probability',)),
-                ('Quality Days Delayed', ('quality_days_delayed',)),
+                ("Border Days Delayed", ("border_days_delayed",)),
+                ("Damage Probability", ("damage_probability",)),
+                ("Defective Probability", ("defective_probability",)),
+                ("Quality Days Delayed", ("quality_days_delayed",)),
             ],
-            'China': [
-                ('Raw Material Mean', ('raw', 'mean')),
+            "China": [
+                ("Raw Material Mean", ("raw", "mean")),
                 # ('Raw Material Std', ('raw', 'std')),
-                ('Labor Mean', ('labor', 'mean')),
+                ("Labor Mean", ("labor", "mean")),
                 # ('Labor Std', ('labor', 'std')),
                 # ('Indirect Shape', ('indirect', 'shape')),
                 # ('Indirect Scale', ('indirect', 'scale')),
@@ -333,18 +378,18 @@ if run_sa:
                 # ('Working Capital Std', ('working_capital', 'std')),
                 # ('Manufacturing Yield (a)', ('yield_params', 'a')),
                 # ('Manufacturing Yield (b)', ('yield_params', 'b')),
-                ('Tariff (Fixed)', ('tariff', 'fixed')),
-                ('Tariff Escalation', ('tariff_escal',)),
-                ('Currency Volatility', ('currency_std',)),
-                ('Disruption Lambda', ('disruption_lambda',)),
+                ("Tariff (Fixed)", ("tariff", "fixed")),
+                ("Tariff Escalation", ("tariff_escal",)),
+                ("Currency Volatility", ("currency_std",)),
+                ("Disruption Lambda", ("disruption_lambda",)),
                 # ('Disruption Min Impact', ('disruption_min_impact',)),
                 # ('Disruption Max Impact', ('disruption_max_impact',)),
-                ('Disruption Days Delayed', ('disruption_days_delayed',)),
-                ('Damage Probability', ('damage_probability',)),
-                ('Quality Days Delayed', ('quality_days_delayed',)),
-                ('Cancellation Probability', ('cancellation_probability',)),
-                ('Cancellation Days Delayed', ('cancellation_days_delayed',)),
-            ]
+                ("Disruption Days Delayed", ("disruption_days_delayed",)),
+                ("Damage Probability", ("damage_probability",)),
+                ("Quality Days Delayed", ("quality_days_delayed",)),
+                ("Cancellation Probability", ("cancellation_probability",)),
+                ("Cancellation Days Delayed", ("cancellation_days_delayed",)),
+            ],
         }
 
         factors_to_test = factors[sa_country]
@@ -352,35 +397,39 @@ if run_sa:
             sa_country, base_params, factors_to_test, sa_order_size
         )
 
-        sa_results = sa_results.sort_values(by='Impact', ascending=True)
+        sa_results = sa_results.sort_values(by="Impact", ascending=True)
 
         # Create Tornado Plot
         fig = go.Figure()
-        fig.add_trace(go.Bar(
-            y=sa_results['Factor'],
-            x=sa_results['High Cost'] - baseline_mean,
-            name='High Estimate (Input +20%)',
-            orientation='h',
-            marker_color='indianred',
-            hovertemplate='%{y}<br>Impact: $%{x:,.2f}<extra></extra>'
-        ))
-        fig.add_trace(go.Bar(
-            y=sa_results['Factor'],
-            x=sa_results['Low Cost'] - baseline_mean,
-            name='Low Estimate (Input -20%)',
-            orientation='h',
-            marker_color='lightblue',
-            hovertemplate='%{y}<br>Impact: $%{x:,.2f}<extra></extra>'
-        ))
+        fig.add_trace(
+            go.Bar(
+                y=sa_results["Factor"],
+                x=sa_results["High Cost"] - baseline_mean,
+                name="High Estimate (Input +20%)",
+                orientation="h",
+                marker_color="indianred",
+                hovertemplate="%{y}<br>Impact: $%{x:,.2f}<extra></extra>",
+            )
+        )
+        fig.add_trace(
+            go.Bar(
+                y=sa_results["Factor"],
+                x=sa_results["Low Cost"] - baseline_mean,
+                name="Low Estimate (Input -20%)",
+                orientation="h",
+                marker_color="lightblue",
+                hovertemplate="%{y}<br>Impact: $%{x:,.2f}<extra></extra>",
+            )
+        )
 
         fig.update_layout(
-            title=f'Sensitivity Analysis for {sa_country} (Baseline Cost: ${baseline_mean:,.2f})',
-            xaxis_title='Impact on Total Cost ($)',
-            yaxis_title='Sensitivity Factor',
-            barmode='relative',
-            yaxis_autorange='reversed',
-            legend=dict(x=0.01, y=0.01, traceorder='normal'),
-            margin=dict(l=200)  # Add left margin for long factor names
+            title=f"Sensitivity Analysis for {sa_country} (Baseline Cost: ${baseline_mean:,.2f})",
+            xaxis_title="Impact on Total Cost ($)",
+            yaxis_title="Sensitivity Factor",
+            barmode="relative",
+            yaxis_autorange="reversed",
+            legend=dict(x=0.01, y=0.01, traceorder="normal"),
+            margin=dict(l=200),  # Add left margin for long factor names
         )
 
         with sa_col2:
