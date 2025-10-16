@@ -44,4 +44,3 @@ def fetch_fred_series(series_id: str, months: int = 24) -> pd.Series:
     except Exception as e:
         print(f"⚠️  Could not fetch {series_id}: {e}")
         return pd.Series(dtype=float)
-

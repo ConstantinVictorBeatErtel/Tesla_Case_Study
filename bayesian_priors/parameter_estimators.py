@@ -102,4 +102,3 @@ def estimate_yield_posterior(
     beta = (1 - baseline_yield) * total
 
     return BetaPosterior(alpha, beta)
-
