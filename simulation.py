@@ -1,4 +1,5 @@
 import numpy as np
+import streamlit as st
 
 from bayesian_priors.samplers import CountrySamplers, build_samplers_for_country
 from config import MONTE_CARLO_SIMULATIONS
@@ -13,6 +14,19 @@ from discrete import (
 )
 from structs import DiscreteRisks, DiscreteRisksParams
 from utils import sample_from_spec
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _get_cached_samplers(country: str, params_json: str) -> CountrySamplers:
+    """
+    Cached wrapper for build_samplers_for_country to prevent repeated FRED API calls.
+    Uses JSON string of params as cache key since dict is not hashable.
+    TTL of 1 hour to refresh data periodically.
+    """
+    import json
+
+    params = json.loads(params_json)
+    return build_samplers_for_country(country, params)
 
 
 def factory_costs_with_bayesian_priors(
@@ -91,7 +105,11 @@ def run_monte_carlo(country: str, params: dict, order_size: int) -> np.ndarray:
     The main orchestrator for running simulations.
     Returns a distribution of the TOTAL COST for an entire order.
     """
-    samplers = build_samplers_for_country(country, params)
+    import json
+
+    # Use cached version to prevent repeated FRED API calls
+    params_json = json.dumps(params, sort_keys=True)
+    samplers = _get_cached_samplers(country, params_json)
     # 1. GENERATE THE DISTRIBUTION OF TOTAL BASE COSTS
     # this is PER-UNIT costs, one for each simulation run.
     base_cost_per_unit_dist = factory_costs_with_bayesian_priors(

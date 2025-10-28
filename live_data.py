@@ -1,7 +1,7 @@
 import os
 
+import requests
 from dotenv import load_dotenv
-from requests import get
 
 load_dotenv()
 
@@ -26,9 +26,11 @@ def get_fed_funds_rate():
             "api_key": api_key,
             "file_type": "json",
         }
-        response = get(url, params=params, timeout=10)
-        response.raise_for_status()  # Raise an exception for bad status codes
-        return response.json()
+        # Use a session context manager to ensure proper connection cleanup
+        with requests.Session() as session:
+            response = session.get(url, params=params, timeout=10)
+            response.raise_for_status()  # Raise an exception for bad status codes
+            return response.json()
     except Exception as e:
         print(f"Warning: Failed to fetch FRED data: {str(e)}")
         return None
