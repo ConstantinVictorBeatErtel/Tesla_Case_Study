@@ -16,10 +16,11 @@ from structs import DiscreteRisks, DiscreteRisksParams
 from utils import sample_from_spec
 
 
-@st.cache_data(show_spinner=False, ttl=3600)
+@st.cache_resource(show_spinner=False, ttl=3600)
 def _get_cached_samplers(country: str, params_json: str) -> CountrySamplers:
     """
     Cached wrapper for build_samplers_for_country to prevent repeated FRED API calls.
+    Uses st.cache_resource since CountrySamplers contains functions (not picklable).
     Uses JSON string of params as cache key since dict is not hashable.
     TTL of 1 hour to refresh data periodically.
     """
