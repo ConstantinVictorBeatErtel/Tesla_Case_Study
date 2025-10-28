@@ -6,6 +6,7 @@ MODEL_Y_MANUFACTURING_COST = 38000
 MODEL_Y_PROFIT = MODEL_Y_PRICE - MODEL_Y_MANUFACTURING_COST
 WACC = 0.0877
 EXPEDITED_SHIPPING_COST_PER_HEADLAMP = 50.71
+# Fetch Fed Funds Rate from FRED API (falls back to default if unavailable)
 FED_FUNDS_RATE = get_most_recent_fed_funds_rate()
 
 COUNTRIES = {

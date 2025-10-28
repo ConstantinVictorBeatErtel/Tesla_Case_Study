@@ -2,6 +2,19 @@
 
 This document describes how model inputs are configured in the simulation, comparing theoretical priors with data-driven Bayesian priors.
 
+## FRED API Configuration
+
+The application uses the Federal Reserve Economic Data (FRED) API to fetch the current Federal Funds Rate. If the API is unavailable or fails (e.g., missing API key, network issues), the application will automatically fall back to a default value of **4.5%**.
+
+**Optional Setup:**
+- To use live FRED data, add your API key to Streamlit Cloud secrets or create a `.env` file:
+  ```
+  FRED_API_KEY=your_api_key_here
+  ```
+- Get a free API key at: https://fred.stlouisfed.org/docs/api/api_key.html
+
+**Note:** The application will run successfully even without a FRED API key by using the fallback value.
+
 ---
 
 ## 1. Raw Material Cost ($/lamp)
